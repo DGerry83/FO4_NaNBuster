@@ -1,0 +1,54 @@
+{
+	"version": 11,
+	"cmakeMinimumRequired": {
+		"major": 4,
+		"minor": 3,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "og-msvc",
+			"displayName": "Fallout 4 OG - MSVC x64",
+			"generator": "Visual Studio 18 2026",
+			"binaryDir": "${sourceDir}/build/og-msvc",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"toolset": {
+				"value": "host=x64",
+				"strategy": "external"
+			},
+			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+			"cacheVariables": {
+				"CMAKE_SYSTEM_NAME": "Windows",
+				"CMAKE_SYSTEM_VERSION": "10.0.19045.0",
+				"VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+				"VCPKG_HOST_TRIPLET": "x64-windows-static-md",
+				"CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "og-msvc-debug",
+			"configurePreset": "og-msvc",
+			"configuration": "Debug"
+		},
+		{
+			"name": "og-msvc-release",
+			"configurePreset": "og-msvc",
+			"configuration": "RelWithDebInfo"
+		}
+	],
+	"testPresets": [
+		{
+			"name": "og-msvc-release",
+			"configurePreset": "og-msvc",
+			"configuration": "RelWithDebInfo",
+			"output": {
+				"outputOnFailure": true
+			}
+		}
+	]
+}
