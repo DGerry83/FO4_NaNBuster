@@ -87,7 +87,91 @@ add_custom_command(
 	COMMENT "Verifying required F4SE plugin exports"
 )
 
+add_library(NaNBuster.Core STATIC
+	src/Core/DxbcClampPatcher.cpp
+	src/Core/DxbcHashWriter.cpp
+	src/Core/DxbcInspector.cpp
+	src/Core/TargetShaderMatcher.cpp
+)
+
+target_include_directories(NaNBuster.Core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+target_compile_features(NaNBuster.Core PUBLIC cxx_std_23)
+
+# C8: engine-independent match-and-substitute use case. Consumed by tests now
+# and by C9/C13 composition; the runtime DLL does not link it yet.
+add_library(NaNBuster.Application STATIC
+	src/Application/ShaderPatchService.cpp
+)
+
+target_link_libraries(NaNBuster.Application PUBLIC NaNBuster.Core)
+
+target_include_directories(NaNBuster.Application PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+target_compile_features(NaNBuster.Application PUBLIC cxx_std_23)
+
+# C6: offline corrected-shader generation. Build-time only; the runtime DLL
+# does not link the tool or the generated payload until C9. Outputs live at
+# the approved ${CMAKE_SOURCE_DIR}/build/shaders/PS49B6A21CI0O1 path; the
+# NANBUSTER_* variables below are the C9 consumption surface.
+add_executable(ShaderPatcher tools/ShaderPatcher/main.cpp)
+target_link_libraries(ShaderPatcher PRIVATE NaNBuster.Core)
+target_compile_features(ShaderPatcher PRIVATE cxx_std_23)
+
+set(NANBUSTER_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/shaders/PS49B6A21CI0O1")
+set(NANBUSTER_ORIGINAL_SHADER_DXBC "${CMAKE_CURRENT_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc")
+set(NANBUSTER_PATCHED_DXBC "${NANBUSTER_SHADER_OUTPUT_DIR}/patched.dxbc")
+set(NANBUSTER_PATCHED_INC "${NANBUSTER_SHADER_OUTPUT_DIR}/patched.inc")
+set(NANBUSTER_PATCHED_ASM "${NANBUSTER_SHADER_OUTPUT_DIR}/patched.asm")
+
+find_program(
+	NANBUSTER_FXC_EXE
+	NAMES fxc
+	HINTS "D:/Windows Kits/10/bin/10.0.26100.0/x64"
+	PATH_SUFFIXES bin
+)
+if(NOT NANBUSTER_FXC_EXE)
+	message(FATAL_ERROR "fxc was not found. Corrected-shader disassembly requires the Windows SDK fxc.")
+endif()
+
+add_custom_command(
+	OUTPUT "${NANBUSTER_PATCHED_DXBC}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_SHADER_OUTPUT_DIR}"
+	COMMAND "$<TARGET_FILE:ShaderPatcher>" "${NANBUSTER_ORIGINAL_SHADER_DXBC}" "${NANBUSTER_PATCHED_DXBC}"
+	DEPENDS ShaderPatcher "${NANBUSTER_ORIGINAL_SHADER_DXBC}"
+	COMMENT "NaNBuster: generating corrected DXBC"
+	VERBATIM
+)
+
+add_custom_command(
+	OUTPUT "${NANBUSTER_PATCHED_INC}"
+	COMMAND "${CMAKE_COMMAND}"
+		"-DNANBUSTER_INPUT=${NANBUSTER_PATCHED_DXBC}"
+		"-DNANBUSTER_OUTPUT=${NANBUSTER_PATCHED_INC}"
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	DEPENDS "${NANBUSTER_PATCHED_DXBC}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	COMMENT "NaNBuster: embedding corrected DXBC as C++ data"
+	VERBATIM
+)
+
+add_custom_command(
+	OUTPUT "${NANBUSTER_PATCHED_ASM}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_SHADER_OUTPUT_DIR}"
+	COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${NANBUSTER_PATCHED_DXBC}" /Fx "${NANBUSTER_PATCHED_ASM}"
+	DEPENDS "${NANBUSTER_PATCHED_DXBC}"
+	COMMENT "NaNBuster: disassembling corrected DXBC with fxc"
+	VERBATIM
+)
+
+add_custom_target(NaNBuster.GeneratedShader ALL
+	DEPENDS "${NANBUSTER_PATCHED_DXBC}" "${NANBUSTER_PATCHED_INC}" "${NANBUSTER_PATCHED_ASM}"
+)
+
 include(CTest)
+
+if(BUILD_TESTING)
+	add_subdirectory(tests)
+endif()
 
 install(TARGETS NaNBuster RUNTIME DESTINATION F4SE/Plugins)
 install(FILES README.md CHANGELOG.md LICENSE THIRD_PARTY_NOTICES.md DESTINATION .)
