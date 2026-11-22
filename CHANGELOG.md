@@ -7,4 +7,7 @@
 - Added the verified original target DXBC and disassembly as read-only development references.
 - Added `docs/Build-and-Compile.md` and `docs/Release.md`: development stages only into the ignored `dist/NaNBuster-dev/`, releases stage into `dist/NaNBuster/`, and local archives live in the ignored root `Releases/`; publication is gated on local ZIP testing and explicit user approval.
 - Retired `package/` as an active staging destination (legacy contents preserved untouched).
-- Shader correction and engine hooking are pending implementation.
+- Added the offline four-channel DXBC clamp pipeline, deterministic hash regeneration, exact target matching, and embedded corrected payload.
+- Added the OG shader-creation hook, original-creation replay, safe fallback behavior, and lifecycle diagnostics.
+- Fixed the OG startup crash by reading the D3D output slot only after the displaced original instructions initialize it.
+- Verified OG plugin loading, exact-target substitution, save/load, ordinary rendering, and controlled visual A/B removal of the black-square artifact.

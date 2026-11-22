@@ -2,7 +2,7 @@
 
 NaNBuster is a standalone Fallout 4 F4SE plugin project targeting the black-square blur artifact caused by NaNs in pixel shader `PS49B6A21CI0O1`.
 
-**Current status:** bootstrap skeleton only. The shader correction and engine hook are not implemented yet.
+**Current status:** OG release candidate. The exact-target shader correction and OG creation hook are implemented. Builds, export checks, runtime substitution, save/load, and a controlled visual A/B test have passed. Extended playtesting and Community Shaders coexistence testing remain before publication.
 
 ## Target fix
 
@@ -17,7 +17,9 @@ The source-level correction for the corresponding shader is:
 float4 col = pow(max(IN.param2, 0.0), 2.2);
 ```
 
-The standalone plugin will use an offline-validated corrected DXBC embedded in the DLL. It will not require Shader Engine, GFXBooster, or Community Shaders.
+The standalone plugin embeds an offline-validated corrected DXBC in the DLL. It does not require Shader Engine, GFXBooster, or Community Shaders.
+
+Only the exact original target is substituted; all other shaders pass through unchanged. AE and sibling shader patches are not included.
 
 The likely Community Shaders source location is [`package/Shaders/Effect.hlsl`](https://github.com/northaxosky/fallout4-community-shaders/blob/7df9173df2cf97089e009ff7cbef52ac1118f502/package/Shaders/Effect.hlsl#L305); the compiled-variant mapping is not yet verified.
 
