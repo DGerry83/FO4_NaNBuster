@@ -13,6 +13,10 @@ project(
 	LANGUAGES CXX
 )
 
+# C12: MSVC MASM (ml64, part of the existing VS toolchain) for the accepted OG
+# hook native entry/replay routines.
+enable_language(ASM_MASM)
+
 set(NANBUSTER_DISPLAY_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 
 set(CMAKE_CXX_STANDARD 23)
@@ -41,6 +45,8 @@ add_library(
 	NaNBuster
 	SHARED
 		src/Infrastructure/Composition.cpp
+		src/Infrastructure/EmbeddedShaderPayload.cpp
+		src/Infrastructure/EngineShaderCreator.cpp
 		src/Infrastructure/PluginEntry.cpp
 		src/Infrastructure/PluginLogger.cpp
 		"${XSE_PLUGIN_INFO_CPP_TARGET}"
@@ -63,7 +69,10 @@ target_compile_definitions(NaNBuster PRIVATE NANBUSTER_VERSION_MAJOR=${PROJECT_V
 target_compile_definitions(NaNBuster PRIVATE NANBUSTER_VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(NaNBuster PRIVATE NANBUSTER_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 target_compile_definitions(NaNBuster PRIVATE NANBUSTER_VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
-target_link_libraries(NaNBuster PRIVATE CommonLibF4::CommonLibF4)
+# C13: the runtime DLL links the hook component (which brings in
+# NaNBuster.Application, NaNBuster.Core, and the MASM native routines) and
+# owns process-lifetime composition/installation via Composition/PluginEntry.
+target_link_libraries(NaNBuster PRIVATE CommonLibF4::CommonLibF4 NaNBuster.Hook)
 
 find_program(
 	NANBUSTER_LLVM_READOBJ
@@ -98,8 +107,8 @@ target_include_directories(NaNBuster.Core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/sr
 
 target_compile_features(NaNBuster.Core PUBLIC cxx_std_23)
 
-# C8: engine-independent match-and-substitute use case. Consumed by tests now
-# and by C9/C13 composition; the runtime DLL does not link it yet.
+# C8: engine-independent match-and-substitute use case. Consumed by tests and
+# by C13 composition through the runtime DLL's NaNBuster.Hook link.
 add_library(NaNBuster.Application STATIC
 	src/Application/ShaderPatchService.cpp
 )
@@ -109,6 +118,33 @@ target_link_libraries(NaNBuster.Application PUBLIC NaNBuster.Core)
 target_include_directories(NaNBuster.Application PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 target_compile_features(NaNBuster.Application PUBLIC cxx_std_23)
+
+# C12: OG shader-creation hook component (G5_HOOK_CONTRACT.md site/fingerprint).
+# Static library consumed by the C12 tests and linked into the runtime DLL by
+# C13; C13 owns composition and installation. Uses CommonLib AV relocation,
+# safe-write, and the F4SE near-branch trampoline pool; XBYAK stays off.
+# The MASM native routines build as their own component: the pinned
+# CommonLibF4 interface C++ options (/WX, /GL, /Zc:*) would otherwise be
+# forwarded to ml64 by the VS generator, which rejects them (A4018 as fatal).
+add_library(NaNBuster.Hook.Native STATIC
+	src/Infrastructure/ShaderCreationHook.asm
+)
+
+add_library(NaNBuster.Hook STATIC
+	src/Infrastructure/ShaderCreationHook.cpp
+)
+
+target_link_libraries(NaNBuster.Hook
+	PUBLIC
+		NaNBuster.Application
+		NaNBuster.Hook.Native
+	PRIVATE
+		CommonLibF4::CommonLibF4
+)
+
+target_include_directories(NaNBuster.Hook PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+target_compile_features(NaNBuster.Hook PUBLIC cxx_std_23)
 
 # C6: offline corrected-shader generation. Build-time only; the runtime DLL
 # does not link the tool or the generated payload until C9. Outputs live at
@@ -166,6 +202,14 @@ add_custom_command(
 add_custom_target(NaNBuster.GeneratedShader ALL
 	DEPENDS "${NANBUSTER_PATCHED_DXBC}" "${NANBUSTER_PATCHED_INC}" "${NANBUSTER_PATCHED_ASM}"
 )
+
+# C9: embedded corrected payload. The adapter compiles the generated include
+# into the runtime DLL and orders the DLL build after payload generation.
+# Header contracts only for C9 itself (ruling D1): the DLL consumes
+# NaNBuster.Application at runtime through C13's NaNBuster.Hook link and the
+# C13 composition wiring.
+target_include_directories(NaNBuster PRIVATE "${NANBUSTER_SHADER_OUTPUT_DIR}")
+add_dependencies(NaNBuster NaNBuster.GeneratedShader)
 
 include(CTest)
 

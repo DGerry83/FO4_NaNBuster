@@ -31,9 +31,15 @@ namespace
 		static bool initialized = false;
 		std::call_once(once, [&]() {
 			F4SE::Init(a_f4se);
-			NaNBuster::PluginLogger::LogSkeletonLoaded();
-			static NaNBuster::Composition composition;
-			initialized = composition.Initialize();
+			// C13: process-lifetime composition with the injected C12 replay
+			// callback and the production outcome logger. The hook feature
+			// result is discarded: an unavailable hook is a safely disabled
+			// feature (one approved diagnostic), never a host-load failure.
+			static NaNBuster::Composition composition(
+				NaNBuster::HookReplayCreationCallback,
+				NaNBuster::PluginLoggerOutcomeLogger());
+			static_cast<void>(composition.Initialize());
+			initialized = true;
 		});
 		return initialized;
 	}
