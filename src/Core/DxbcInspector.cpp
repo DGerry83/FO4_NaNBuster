@@ -356,7 +356,18 @@ namespace NaNBuster
 			const std::uint32_t opcode = token & kOpcodeMask;
 			const std::uint32_t length = (token & kLengthMask) >> kLengthShift;
 			if (opcode == kOpcodeCustomData) {
-				return std::unexpected(DxbcError{ DxbcErrorCode::UnsupportedCustomData, pos });
+				if (pos + 1 >= streamDwords) {
+					return std::unexpected(DxbcError{ DxbcErrorCode::InstructionOutOfRange, pos });
+				}
+				const std::uint32_t blockLength = tokens.Get(pos + 1);
+				if (blockLength < 2) {
+					return std::unexpected(DxbcError{ DxbcErrorCode::UnsupportedCustomData, pos });
+				}
+				if (blockLength > streamDwords - pos) {
+					return std::unexpected(DxbcError{ DxbcErrorCode::InstructionOutOfRange, pos });
+				}
+				pos += blockLength;
+				continue;
 			}
 			if (length == 0) {
 				return std::unexpected(DxbcError{ DxbcErrorCode::ZeroInstructionLength, pos });

@@ -4,9 +4,9 @@
 
 namespace NaNBuster
 {
-	// Result category for one shader-creation selection. NotTarget: input was
-	// not the exact original target and passes through unchanged. Patched:
-	// exact target matched and the corrected bytecode was selected.
+	// Result category for one shader-creation selection. NotTarget: no enabled
+	// exact original patch matched, so input passes through unchanged. Patched:
+	// an enabled exact original matched and corrected bytecode was selected.
 	// HookUnavailable and CreationFailedOriginal are produced downstream by
 	// the hook/composition layers (C12/C13); the selection use case never
 	// emits them, but the values stay locked for those consumers.
@@ -28,5 +28,6 @@ namespace NaNBuster
 		ByteView SelectedBytecode;
 		bool Substitute;
 		PatchOutcome Outcome;
+		const ShaderIdentity* SourceIdentity = nullptr;
 	};
 }

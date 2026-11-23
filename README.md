@@ -1,10 +1,12 @@
 # NaNBuster
 
-NaNBuster is a standalone Fallout 4 F4SE plugin project targeting the black-square blur artifact caused by NaNs in pixel shader `PS49B6A21CI0O1`.
+NaNBuster is a standalone Fallout 4 F4SE plugin that prevents two independent NaN sources: the original COLOR0 logarithm issue and invalid Lambert normal decoding.
 
-**Current status:** OG release candidate. The exact-target shader correction and OG creation hook are implemented. Builds, export checks, runtime substitution, save/load, and a controlled visual A/B test have passed. Extended playtesting and Community Shaders coexistence testing remain before publication.
+**Current status:** development version 0.2.1.0. The original OG correction and creation hook remain intact, and this version adds eleven Lambert decoder guards with independent INI toggles.
 
-## Target fix
+## Scoped fixes
+
+### COLOR0 logarithm clamp
 
 - Shader: `PS49B6A21CI0O1`
 - RenderDoc/DXBC hash: `82f7e159-8db6b7a4-b742fff3-b11324e9`
@@ -17,9 +19,23 @@ The source-level correction for the corresponding shader is:
 float4 col = pow(max(IN.param2, 0.0), 2.2);
 ```
 
-The standalone plugin embeds an offline-validated corrected DXBC in the DLL. It does not require Shader Engine, GFXBooster, or Community Shaders.
+### Lambert decode guard
 
-Only the exact original target is substituted; all other shaders pass through unchanged. AE and sibling shader patches are not included.
+Eleven shaders decode normals with `e = sample * 4 - 2`, followed by `f = dot(e,e)` and `sqrt(1 - f/4)`. Values above the valid disc can otherwise produce NaN. The guard selects `1.999 * rsqrt(f)` only when `f > 4`, scales `e.xy`, and recomputes `f` before the original decode. Valid inputs are unchanged; invalid inputs produce a unit normal within floating-point rounding.
+
+The standalone plugin embeds all corrected DXBC payloads in the DLL. It does not require Shader Engine, GFXBooster, or Community Shaders. Only exact original size/hash matches are substituted; all other shaders pass through unchanged. AE and sibling shader patches are not included.
+
+## Configuration
+
+`NaNBuster.ini` is installed beside `NaNBuster.dll` under `F4SE/Plugins/` only when no file already exists. Existing user settings are preserved on repeated development installs.
+
+```ini
+[Fixes]
+Color0LogClamp=true
+LambertDecodeGuard=true
+```
+
+Each fix defaults to enabled. Set only the problematic fix to `false` to disable it while leaving the other fix active. `LambertDecodeGuard` controls all eleven Lambert shaders as one fix. Missing settings and invalid values default to enabled; invalid values also produce a startup warning. Changes require restarting Fallout 4. Substitution logs report the actual shader identity.
 
 The likely Community Shaders source location is [`package/Shaders/Effect.hlsl`](https://github.com/northaxosky/fallout4-community-shaders/blob/7df9173df2cf97089e009ff7cbef52ac1118f502/package/Shaders/Effect.hlsl#L305); the compiled-variant mapping is not yet verified.
 
@@ -62,9 +78,12 @@ and the approval-gated publication procedure.
 - `src/Core/` — pure DXBC and target-matching logic.
 - `src/Application/` — shader-selection use case.
 - `src/Infrastructure/` — F4SE, hooking, D3D, payload, and logging adapters.
-- `tools/ShaderPatcher/` — offline corrected-DXBC generator.
+- `tools/ShaderPatcher/` — offline COLOR0 DXBC generator.
+- `tools/LambertShaderPatcher/` — offline Lambert guard generator.
 - `tests/` — layer-mirrored tests.
-- `references/shaders/PS49B6A21CI0O1/` — read-only original DXBC and disassembly.
+- `references/shaders/PS49B6A21CI0O1/` — read-only original COLOR0 DXBC and disassembly.
+- `references/shaders/LambertDecode/` — read-only original Lambert DXBC/disassembly pairs.
+- `assets/config/NaNBuster.ini` — default-on scoped-fix configuration.
 - `dist/NaNBuster-dev/` — ignored development staging; the user-owned MO2 symlink target.
 - `dist/NaNBuster/` — ignored release staging; recreated only for explicit releases.
 - `Releases/` — ignored local ZIP archives and release notes.

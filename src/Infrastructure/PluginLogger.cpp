@@ -9,6 +9,23 @@ namespace NaNBuster
 		REX::LogInformation("{} v{} skeleton loaded; shader hook is not installed."sv, PluginName, PluginVersion);
 	}
 
+	void PluginLogger::LogConfiguration(const IniConfigLoadResult& config) noexcept
+	{
+		if (config.PathError) {
+			REX::LogInformation("NaNBuster: configuration path unavailable; using enabled defaults for all fixes.");
+		}
+		if (config.Color0LogClampInvalid) {
+			REX::LogInformation("NaNBuster: invalid Color0LogClamp value; using enabled default.");
+		}
+		if (config.LambertDecodeGuardInvalid) {
+			REX::LogInformation("NaNBuster: invalid LambertDecodeGuard value; using enabled default.");
+		}
+		REX::LogInformation(
+			"NaNBuster: Color0LogClamp={}; LambertDecodeGuard={}."sv,
+			config.Policy.Color0LogClampEnabled ? "enabled" : "disabled",
+			config.Policy.LambertDecodeGuardEnabled ? "enabled" : "disabled");
+	}
+
 	void PluginLogger::LogPatchInstalled() noexcept
 	{
 		REX::LogInformation("NaNBuster: shader NaN patch installed for PS49B6A21CI0O1.");
@@ -27,6 +44,13 @@ namespace NaNBuster
 	void PluginLogger::LogCorrectedCreationFailedOriginal() noexcept
 	{
 		REX::LogInformation("NaNBuster: patched shader creation failed; using original shader.");
+	}
+
+	auto PluginLoggerSubstitutionLogger() noexcept -> SubstitutionLogger
+	{
+		return +[](const ShaderIdentity& identity) noexcept {
+			REX::LogInformation("NaNBuster: patched {}."sv, identity.ShaderUid);
+		};
 	}
 
 	auto PluginLoggerOutcomeLogger() noexcept -> OutcomeLogger

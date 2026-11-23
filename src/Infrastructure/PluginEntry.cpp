@@ -1,5 +1,6 @@
 #include "AppConfig.h"
 #include "Infrastructure/Composition.h"
+#include "Infrastructure/IniConfig.h"
 #include "Infrastructure/PluginLogger.h"
 
 // The pinned CommonLibF4 AV resolves F4SEPlugin_Version internally during
@@ -31,13 +32,18 @@ namespace
 		static bool initialized = false;
 		std::call_once(once, [&]() {
 			F4SE::Init(a_f4se);
+			const auto config = NaNBuster::IniConfigLoader::Load(NaNBuster::IniConfigLoader::DefaultPath());
+			NaNBuster::PluginLogger::LogConfiguration(config);
 			// C13: process-lifetime composition with the injected C12 replay
 			// callback and the production outcome logger. The hook feature
 			// result is discarded: an unavailable hook is a safely disabled
 			// feature (one approved diagnostic), never a host-load failure.
 			static NaNBuster::Composition composition(
 				NaNBuster::HookReplayCreationCallback,
-				NaNBuster::PluginLoggerOutcomeLogger());
+				NaNBuster::ComputeShaderReplayCreationCallback,
+				NaNBuster::PluginLoggerOutcomeLogger(),
+				config.Policy,
+				NaNBuster::PluginLoggerSubstitutionLogger());
 			static_cast<void>(composition.Initialize());
 			initialized = true;
 		});

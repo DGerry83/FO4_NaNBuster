@@ -84,10 +84,12 @@ namespace NaNBuster
 	ShaderCreationHook::ShaderCreationHook(
 		const ShaderPatchService& service,
 		IEngineShaderCreator& creator,
-		OutcomeLogger logOutcome) noexcept :
+		OutcomeLogger logOutcome,
+		SubstitutionLogger logSubstitution) noexcept :
 		m_service(service),
 		m_creator(creator),
-		m_logOutcome(logOutcome)
+		m_logOutcome(logOutcome),
+		m_logSubstitution(logSubstitution)
 	{
 	}
 
@@ -224,8 +226,8 @@ namespace NaNBuster
 
 	auto ShaderCreationHook::Dispatch(ByteView originalBytes, const HookCreationContext& context) noexcept -> EngineCreationOutcome
 	{
-		// C8 guarantees: nonmatch -> caller's original view, Substitute false,
-		// payload never queried; exact match -> payload corrected view.
+		// No enabled exact match -> caller's original view, Substitute false;
+		// enabled exact match -> registry/legacy corrected view.
 		const ShaderSelection selection = m_service.Select(originalBytes);
 		if (!selection.Substitute) {
 			return m_creator.Create(selection.SelectedBytecode, const_cast<OgCreationContext*>(&context.engine));
@@ -234,7 +236,11 @@ namespace NaNBuster
 		const EngineCreationOutcome corrected = m_creator.Create(
 			selection.SelectedBytecode, const_cast<OgCreationContext*>(&context.engine));
 		if (corrected.Succeeded()) {
-			m_logOutcome(HookOutcome::TargetSubstituted);
+			if (m_logSubstitution != nullptr && selection.SourceIdentity != nullptr) {
+				m_logSubstitution(*selection.SourceIdentity);
+			} else {
+				m_logOutcome(HookOutcome::TargetSubstituted);
+			}
 			return corrected;
 		}
 

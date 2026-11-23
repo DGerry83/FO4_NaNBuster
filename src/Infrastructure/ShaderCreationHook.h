@@ -46,6 +46,7 @@ namespace NaNBuster
 	};
 
 	using OutcomeLogger = void (*)(HookOutcome outcome) noexcept;
+	using SubstitutionLogger = void (*)(const ShaderIdentity& identity) noexcept;
 
 	// D9 write-recovery truth table for a failed detour write (pure seam so the
 	// branch logic is directly testable without engine memory):
@@ -87,7 +88,11 @@ namespace NaNBuster
 	class ShaderCreationHook
 	{
 	public:
-		ShaderCreationHook(const ShaderPatchService& service, IEngineShaderCreator& creator, OutcomeLogger logOutcome) noexcept;
+		ShaderCreationHook(
+			const ShaderPatchService& service,
+			IEngineShaderCreator& creator,
+			OutcomeLogger logOutcome,
+			SubstitutionLogger logSubstitution = nullptr) noexcept;
 
 		auto Install() noexcept -> bool;
 		[[nodiscard]] auto IsInstalled() const noexcept -> bool;
@@ -98,6 +103,7 @@ namespace NaNBuster
 		const ShaderPatchService& m_service;
 		IEngineShaderCreator& m_creator;
 		OutcomeLogger m_logOutcome;
+		SubstitutionLogger m_logSubstitution;
 		bool m_attempted = false;
 		bool m_installed = false;
 	};
@@ -114,6 +120,7 @@ namespace NaNBuster
 	// the four locked PluginLogger strings. Defined in PluginLogger.cpp (the
 	// runtime DLL translation unit); C13 composition injects it.
 	auto PluginLoggerOutcomeLogger() noexcept -> OutcomeLogger;
+	auto PluginLoggerSubstitutionLogger() noexcept -> SubstitutionLogger;
 }
 
 // MASM native routines (ShaderCreationHook.asm), linked into the hook
