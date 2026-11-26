@@ -2,7 +2,7 @@
 
 NaNBuster is a standalone Fallout 4 F4SE plugin that prevents two independent sources of NaN pixels, an anisotropic-specular range failure that can produce white-square bloom artifacts, and valid-normal isotropic specular aliasing that can produce needle-like glossy-edge highlights. It substitutes corrected shader bytecode only for exact original size/hash matches and leaves all other shaders unchanged.
 
-**Current release:** [v0.2.1](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.2.1), supporting Fallout 4 OG 1.10.163. The original COLOR0 correction and twelve Lambert decoder guards have separate, default-on INI toggles.
+**Current release:** [v0.2.5](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.2.5), supporting Fallout 4 OG 1.10.163. All four scoped fixes have independent, default-on INI toggles.
 
 ## Requirements
 
