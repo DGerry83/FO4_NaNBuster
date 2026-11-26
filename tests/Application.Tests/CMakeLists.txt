@@ -38,6 +38,7 @@ target_compile_definitions(
 		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
 		NANBUSTER_CORRECTED_SHADER_PATH="${NANBUSTER_PATCHED_DXBC}"
 		NANBUSTER_LAMBERT_REFERENCE_ROOT="${CMAKE_SOURCE_DIR}/references/shaders/LambertDecode"
+		NANBUSTER_ISOTROPIC_ORIGINAL_PATH="${CMAKE_SOURCE_DIR}/references/shaders/IsotropicSpecularAA/f4b2da50-c279fcd9-bd60ba4f-6a804632/original.dxbc"
 )
 
 add_dependencies(Application.ScopedShaderPatchService.Tests NaNBuster.GeneratedShader)

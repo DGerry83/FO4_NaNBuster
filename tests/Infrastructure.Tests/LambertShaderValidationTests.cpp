@@ -14,6 +14,7 @@
 #include "4bfc847c-48cbb854-83d96138-488b9bb1/patched.inc"
 #include "262c37a4-f4966781-271cf8ba-64c06ec1/patched.inc"
 #include "e73d9a26-0c9afe98-f628f975-0e5f8aef/patched.inc"
+#include "be21279d-733505d8-43f98a86-09502d65/patched.inc"
 
 #include <algorithm>
 #include <array>
@@ -67,6 +68,7 @@ namespace
 		if (stem == "4bfc847c-48cbb854-83d96138-488b9bb1") return PayloadOf(Lambert_4bfc847c);
 		if (stem == "262c37a4-f4966781-271cf8ba-64c06ec1") return PayloadOf(Lambert_262c37a4);
 		if (stem == "e73d9a26-0c9afe98-f628f975-0e5f8aef") return PayloadOf(Lambert_e73d9a26);
+		if (stem == "be21279d-733505d8-43f98a86-09502d65") return PayloadOf(Lambert_be21279d);
 		throw std::runtime_error("unknown generated Lambert payload");
 	}
 
@@ -144,7 +146,8 @@ namespace
 
 		std::size_t mad = original.size();
 		for (std::size_t i = 0; i < original.size(); ++i) {
-			if (original[i].starts_with("mad ") && original[i].contains("l(4.000000, 4.000000")) {
+			if (original[i].starts_with("mad ") && original[i].contains("4.000000") &&
+				original[i].contains("-2.000000") && i + 1 < original.size() && original[i + 1].starts_with("dp2 ")) {
 				CHECK(mad == original.size());
 				mad = i;
 			}
@@ -267,6 +270,6 @@ auto main() -> int
 		std::cerr << "Infrastructure.LambertShaderValidation: " << g_failures << " check(s) failed.\n";
 		return EXIT_FAILURE;
 	}
-	std::cout << "Infrastructure.LambertShaderValidation: all checks passed (10 deterministic payloads, ASM diffs, D3D creation).\n";
+	std::cout << "Infrastructure.LambertShaderValidation: all checks passed (12 deterministic payloads, ASM diffs, D3D creation).\n";
 	return EXIT_SUCCESS;
 }

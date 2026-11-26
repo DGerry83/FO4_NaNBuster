@@ -111,6 +111,56 @@ add_dependencies(Infrastructure.LambertShaderValidation.Tests NaNBuster.Generate
 add_test(NAME Infrastructure.LambertShaderValidation COMMAND Infrastructure.LambertShaderValidation.Tests)
 
 
+add_executable(Infrastructure.AnisotropicSpecularClampValidation.Tests AnisotropicSpecularClampValidationTests.cpp)
+
+target_link_libraries(Infrastructure.AnisotropicSpecularClampValidation.Tests PRIVATE NaNBuster.Core d3d11)
+
+target_include_directories(
+	Infrastructure.AnisotropicSpecularClampValidation.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+		"${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
+)
+
+target_compile_definitions(
+	Infrastructure.AnisotropicSpecularClampValidation.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_LAMBERT_REFERENCE_ROOT="${CMAKE_SOURCE_DIR}/references/shaders/LambertDecode"
+		NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT="${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
+)
+
+add_dependencies(Infrastructure.AnisotropicSpecularClampValidation.Tests NaNBuster.GeneratedLambertShaders)
+
+add_test(NAME Infrastructure.AnisotropicSpecularClampValidation COMMAND Infrastructure.AnisotropicSpecularClampValidation.Tests)
+
+
+add_executable(Infrastructure.IsotropicSpecularAAValidation.Tests IsotropicSpecularAAValidationTests.cpp)
+
+target_link_libraries(Infrastructure.IsotropicSpecularAAValidation.Tests PRIVATE NaNBuster.Core d3d11)
+
+target_include_directories(
+	Infrastructure.IsotropicSpecularAAValidation.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+		"${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+)
+
+target_compile_definitions(
+	Infrastructure.IsotropicSpecularAAValidation.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_ISOTROPIC_ORIGINAL_PATH="${CMAKE_SOURCE_DIR}/references/shaders/IsotropicSpecularAA/f4b2da50-c279fcd9-bd60ba4f-6a804632/original.dxbc"
+		NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR="${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+)
+
+add_dependencies(Infrastructure.IsotropicSpecularAAValidation.Tests NaNBuster.GeneratedIsotropicSpecularAA)
+
+add_test(NAME Infrastructure.IsotropicSpecularAAValidation COMMAND Infrastructure.IsotropicSpecularAAValidation.Tests)
+
+
 add_executable(Infrastructure.EmbeddedShaderPatchRegistry.Tests
 	EmbeddedShaderPatchRegistryTests.cpp
 	"${CMAKE_SOURCE_DIR}/src/Infrastructure/EmbeddedShaderPatchRegistry.cpp"
@@ -125,6 +175,7 @@ target_include_directories(
 		"${CMAKE_SOURCE_DIR}/tests"
 		"${NANBUSTER_SHADER_OUTPUT_DIR}"
 		"${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
+		"${CMAKE_SOURCE_DIR}/build/shaders"
 )
 
 target_compile_definitions(
@@ -133,6 +184,7 @@ target_compile_definitions(
 		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
 		NANBUSTER_CORRECTED_SHADER_PATH="${NANBUSTER_PATCHED_DXBC}"
 		NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT="${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
+		NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR="${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
 )
 
 add_dependencies(Infrastructure.EmbeddedShaderPatchRegistry.Tests NaNBuster.GeneratedShader)
@@ -177,6 +229,7 @@ target_include_directories(
 		"${CMAKE_SOURCE_DIR}/tests"
 		"${NANBUSTER_SHADER_OUTPUT_DIR}"
 		"${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
+		"${CMAKE_SOURCE_DIR}/build/shaders"
 )
 
 target_compile_definitions(

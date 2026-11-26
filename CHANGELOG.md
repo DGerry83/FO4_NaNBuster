@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.5.0
+
+- Added exact-target isotropic specular anti-aliasing for original `f4b2da50-c279fcd9-bd60ba4f-6a804632`, widening the isotropic exponent from fine normal variance to reduce one-pixel glossy-edge strips and downstream bloom.
+- Added independent default-on `IsotropicSpecularAA` configuration and one embedded registry entry, bringing the registry to 28 entries while preserving existing fixes and payloads.
+- Verified the 7072-byte payload with exact DXBC/ASM tests, D3D11 creation, and RenderDoc replay: the confirmed peak fell from 35.7996788 to 14.8921652 and all sampled outputs remained finite.
+
+## 0.2.4.0
+
+- Expanded the anisotropic upper clamp proactively to all seven exact originals: 5612, 5620, 5617, 5650, 5832, 5836, and compute 6108.
+- Preserved valid `[0,1]` lobe values and independent Lambert/anisotropic toggles; the registry now contains 27 entries.
+- Verified 5620 replay with the offending base and power reduced to 1 while neighboring fragments remain unchanged.
+
+## 0.2.3.0
+
+- Added exact original compute shader 6108 to the anisotropic clamp and Lambert guard coverage, fixing a separate compute-lighting source of extreme finite HDR values and white-square bloom.
+- Preserved independent Lambert and anisotropic toggles with three static payloads for 6108; the registry now contains 17 entries and twelve Lambert decoders.
+- Verified compute replay with both offending lobe bases and powers reduced to 1 while valid comparison threads remain unchanged.
+
+## 0.2.2.0
+
+- Added an exact-target upper clamp for the 5612 anisotropic specular lobe, preventing out-of-range values from exploding into extreme finite HDR energy and white-square bloom.
+- Added independent default-on `AnisotropicSpecularClamp` configuration. Static Lambert-only, clamp-only, and combined payloads preserve independent toggle behavior without runtime patch chaining.
+- Verified corrected DXBC with focused tests, D3D11 creation, and RenderDoc replacement in the white-square capture.
+
 ## 0.2.1.0
 
 - Added the uncovered 5836 Lambert decoder variant to the offline guard pipeline and embedded registry.

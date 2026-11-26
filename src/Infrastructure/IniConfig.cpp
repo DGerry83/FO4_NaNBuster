@@ -97,10 +97,16 @@ namespace NaNBuster
 
 		const auto color = ReadSetting(path, L"Color0LogClamp");
 		const auto lambert = ReadSetting(path, L"LambertDecodeGuard");
+		const auto anisotropic = ReadSetting(path, L"AnisotropicSpecularClamp");
+		const auto isotropic = ReadSetting(path, L"IsotropicSpecularAA");
 		result.Policy.Color0LogClampEnabled = !color.Present || !color.Valid || color.Value;
 		result.Policy.LambertDecodeGuardEnabled = !lambert.Present || !lambert.Valid || lambert.Value;
+		result.Policy.AnisotropicSpecularClampEnabled = !anisotropic.Present || !anisotropic.Valid || anisotropic.Value;
+		result.Policy.IsotropicSpecularAAEnabled = !isotropic.Present || !isotropic.Valid || isotropic.Value;
 		result.Color0LogClampInvalid = color.Present && !color.Valid;
 		result.LambertDecodeGuardInvalid = lambert.Present && !lambert.Valid;
+		result.AnisotropicSpecularClampInvalid = anisotropic.Present && !anisotropic.Valid;
+		result.IsotropicSpecularAAInvalid = isotropic.Present && !isotropic.Valid;
 		return result;
 	}
 	catch (...) {

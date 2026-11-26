@@ -20,10 +20,18 @@ namespace NaNBuster
 		if (config.LambertDecodeGuardInvalid) {
 			REX::LogInformation("NaNBuster: invalid LambertDecodeGuard value; using enabled default.");
 		}
+		if (config.AnisotropicSpecularClampInvalid) {
+			REX::LogInformation("NaNBuster: invalid AnisotropicSpecularClamp value; using enabled default.");
+		}
+		if (config.IsotropicSpecularAAInvalid) {
+			REX::LogInformation("NaNBuster: invalid IsotropicSpecularAA value; using enabled default.");
+		}
 		REX::LogInformation(
-			"NaNBuster: Color0LogClamp={}; LambertDecodeGuard={}."sv,
+			"NaNBuster: Color0LogClamp={}; LambertDecodeGuard={}; AnisotropicSpecularClamp={}; IsotropicSpecularAA={}."sv,
 			config.Policy.Color0LogClampEnabled ? "enabled" : "disabled",
-			config.Policy.LambertDecodeGuardEnabled ? "enabled" : "disabled");
+			config.Policy.LambertDecodeGuardEnabled ? "enabled" : "disabled",
+			config.Policy.AnisotropicSpecularClampEnabled ? "enabled" : "disabled",
+			config.Policy.IsotropicSpecularAAEnabled ? "enabled" : "disabled");
 	}
 
 	void PluginLogger::LogPatchInstalled() noexcept

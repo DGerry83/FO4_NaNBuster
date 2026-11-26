@@ -10,12 +10,17 @@ namespace NaNBuster
 	{
 		Color0LogClamp,
 		LambertDecodeGuard,
+		AnisotropicSpecularClamp,
+		LambertDecodeGuardWithAnisotropicSpecularClamp,
+		IsotropicSpecularAA,
 	};
 
 	struct FixPolicy
 	{
 		bool Color0LogClampEnabled = true;
 		bool LambertDecodeGuardEnabled = true;
+		bool AnisotropicSpecularClampEnabled = true;
+		bool IsotropicSpecularAAEnabled = true;
 
 		[[nodiscard]] static constexpr auto AllEnabled() noexcept -> FixPolicy
 		{
@@ -24,7 +29,19 @@ namespace NaNBuster
 
 		[[nodiscard]] constexpr auto IsEnabled(FixId fix) const noexcept -> bool
 		{
-			return fix == FixId::Color0LogClamp ? Color0LogClampEnabled : LambertDecodeGuardEnabled;
+			switch (fix) {
+			case FixId::Color0LogClamp:
+				return Color0LogClampEnabled;
+			case FixId::LambertDecodeGuard:
+				return LambertDecodeGuardEnabled;
+			case FixId::AnisotropicSpecularClamp:
+				return AnisotropicSpecularClampEnabled;
+			case FixId::LambertDecodeGuardWithAnisotropicSpecularClamp:
+				return LambertDecodeGuardEnabled && AnisotropicSpecularClampEnabled;
+			case FixId::IsotropicSpecularAA:
+				return IsotropicSpecularAAEnabled;
+			}
+			return false;
 		}
 	};
 

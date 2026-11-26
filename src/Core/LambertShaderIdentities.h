@@ -92,5 +92,6 @@ namespace NaNBuster
 		LambertIdentityDetail::MakeIdentity("4bfc847c-48cbb854-83d96138-488b9bb1", 2972, LambertShaderStage::Pixel),
 		LambertIdentityDetail::MakeIdentity("262c37a4-f4966781-271cf8ba-64c06ec1", 26304, LambertShaderStage::Pixel),
 		LambertIdentityDetail::MakeIdentity("e73d9a26-0c9afe98-f628f975-0e5f8aef", 3892, LambertShaderStage::Compute),
+		LambertIdentityDetail::MakeIdentity("be21279d-733505d8-43f98a86-09502d65", 6588, LambertShaderStage::Compute),
 	};
 }

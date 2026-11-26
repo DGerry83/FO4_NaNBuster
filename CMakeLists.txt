@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 4.3.0)
 
 set(COMMONLIB_PLUGIN_NAME "NaNBuster")
 set(COMMONLIB_PLUGIN_AUTHOR "DGerry83")
-set(COMMONLIB_PLUGIN_VERSION "0.2.1.0")
+set(COMMONLIB_PLUGIN_VERSION "0.2.5.0")
 set(COMMONLIB_PLUGIN_LICENSE "MIT")
-set(COMMONLIB_PLUGIN_DESCRIPTION "Fallout 4 pixel-shader NaN fix")
+set(COMMONLIB_PLUGIN_DESCRIPTION "Fallout 4 shader artifact fixes")
 
 project(
 	NaNBuster
@@ -100,9 +100,11 @@ add_custom_command(
 )
 
 add_library(NaNBuster.Core STATIC
+	src/Core/DxbcAnisotropicSpecularClampPatcher.cpp
 	src/Core/DxbcClampPatcher.cpp
 	src/Core/DxbcHashWriter.cpp
 	src/Core/DxbcInspector.cpp
+	src/Core/DxbcIsotropicSpecularAAPatcher.cpp
 	src/Core/DxbcLambertGuardPatcher.cpp
 	src/Core/ShaderIdentityMatcher.cpp
 	src/Core/ShaderTriage.cpp
@@ -165,6 +167,10 @@ target_compile_features(ShaderPatcher PRIVATE cxx_std_23)
 add_executable(LambertShaderPatcher tools/LambertShaderPatcher/main.cpp)
 target_link_libraries(LambertShaderPatcher PRIVATE NaNBuster.Core)
 target_compile_features(LambertShaderPatcher PRIVATE cxx_std_23)
+
+add_executable(IsotropicShaderPatcher tools/IsotropicShaderPatcher/main.cpp)
+target_link_libraries(IsotropicShaderPatcher PRIVATE NaNBuster.Core)
+target_compile_features(IsotropicShaderPatcher PRIVATE cxx_std_23)
 
 add_executable(ShaderTriage tools/ShaderTriage/main.cpp)
 target_link_libraries(ShaderTriage PRIVATE NaNBuster.Core)
@@ -232,6 +238,7 @@ set(NANBUSTER_LAMBERT_SHADER_HASHES
 	"4bfc847c-48cbb854-83d96138-488b9bb1"
 	"262c37a4-f4966781-271cf8ba-64c06ec1"
 	"e73d9a26-0c9afe98-f628f975-0e5f8aef"
+	"be21279d-733505d8-43f98a86-09502d65"
 )
 set(NANBUSTER_LAMBERT_GENERATED_OUTPUTS)
 set(NANBUSTER_LAMBERT_INCLUDE_DIRS)
@@ -279,6 +286,78 @@ foreach(hash IN LISTS NANBUSTER_LAMBERT_SHADER_HASHES)
 		COMMENT "NaNBuster: normalizing original Lambert ASM ${symbolSuffix}"
 		VERBATIM
 	)
+	if(hash STREQUAL "8904fc0f-cb497158-117bc46d-4e1cf466" OR
+		hash STREQUAL "4dc83306-024b9074-9c24d67a-fcdee952" OR
+		hash STREQUAL "325742ce-45bf17d0-f4879324-3637b6aa" OR
+		hash STREQUAL "600e22f5-e1a79678-b183a8f0-99de971d" OR
+		hash STREQUAL "6b7aa1fd-0175af05-1bf184b7-22dd8846" OR
+		hash STREQUAL "262c37a4-f4966781-271cf8ba-64c06ec1" OR
+		hash STREQUAL "be21279d-733505d8-43f98a86-09502d65")
+		set(anisotropicDxbc "${outputDir}/anisotropic-clamped.dxbc")
+		set(anisotropicInc "${outputDir}/anisotropic-clamped.inc")
+		set(anisotropicAsm "${outputDir}/anisotropic-clamped.asm")
+		set(combinedDxbc "${outputDir}/combined.dxbc")
+		set(combinedInc "${outputDir}/combined.inc")
+		set(combinedAsm "${outputDir}/combined.asm")
+
+		add_custom_command(
+			OUTPUT "${anisotropicDxbc}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "$<TARGET_FILE:LambertShaderPatcher>" "${originalDxbc}" "${anisotropicDxbc}" --anisotropic-clamp
+			DEPENDS LambertShaderPatcher "${originalDxbc}"
+			COMMENT "NaNBuster: generating anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${anisotropicInc}"
+			COMMAND "${CMAKE_COMMAND}"
+				"-DNANBUSTER_INPUT=${anisotropicDxbc}"
+				"-DNANBUSTER_OUTPUT=${anisotropicInc}"
+				"-DNANBUSTER_SYMBOL=Anisotropic_${symbolSuffix}"
+				-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			DEPENDS "${anisotropicDxbc}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			COMMENT "NaNBuster: embedding anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${anisotropicAsm}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${anisotropicDxbc}" /Fx "${anisotropicAsm}"
+			DEPENDS "${anisotropicDxbc}"
+			COMMENT "NaNBuster: disassembling anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedDxbc}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "$<TARGET_FILE:LambertShaderPatcher>" "${originalDxbc}" "${combinedDxbc}" --combined-anisotropic-clamp
+			DEPENDS LambertShaderPatcher "${originalDxbc}"
+			COMMENT "NaNBuster: generating combined guarded DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedInc}"
+			COMMAND "${CMAKE_COMMAND}"
+				"-DNANBUSTER_INPUT=${combinedDxbc}"
+				"-DNANBUSTER_OUTPUT=${combinedInc}"
+				"-DNANBUSTER_SYMBOL=Combined_${symbolSuffix}"
+				-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			DEPENDS "${combinedDxbc}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			COMMENT "NaNBuster: embedding combined guarded DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedAsm}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${combinedDxbc}" /Fx "${combinedAsm}"
+			DEPENDS "${combinedDxbc}"
+			COMMENT "NaNBuster: disassembling combined guarded DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		list(APPEND NANBUSTER_LAMBERT_GENERATED_OUTPUTS
+			"${anisotropicDxbc}" "${anisotropicInc}" "${anisotropicAsm}"
+			"${combinedDxbc}" "${combinedInc}" "${combinedAsm}")
+	endif()
 	list(APPEND NANBUSTER_LAMBERT_GENERATED_OUTPUTS "${patchedDxbc}" "${patchedInc}" "${patchedAsm}" "${originalNormalizedAsm}")
 	list(APPEND NANBUSTER_LAMBERT_INCLUDE_DIRS "${outputDir}")
 endforeach()
@@ -286,12 +365,64 @@ endforeach()
 add_custom_target(NaNBuster.GeneratedLambertShaders ALL DEPENDS ${NANBUSTER_LAMBERT_GENERATED_OUTPUTS})
 add_dependencies(NaNBuster.GeneratedShader NaNBuster.GeneratedLambertShaders)
 
+set(NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/build/shaders/IsotropicSpecularAA/f4b2da50-c279fcd9-bd60ba4f-6a804632")
+set(NANBUSTER_ISOTROPIC_ORIGINAL_DXBC "${CMAKE_SOURCE_DIR}/references/shaders/IsotropicSpecularAA/f4b2da50-c279fcd9-bd60ba4f-6a804632/original.dxbc")
+set(NANBUSTER_ISOTROPIC_PATCHED_DXBC "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}/patched.dxbc")
+set(NANBUSTER_ISOTROPIC_PATCHED_INC "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}/patched.inc")
+set(NANBUSTER_ISOTROPIC_PATCHED_ASM "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}/patched.asm")
+set(NANBUSTER_ISOTROPIC_ORIGINAL_NORMALIZED_ASM "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}/original-normalized.asm")
+
+add_custom_command(
+	OUTPUT "${NANBUSTER_ISOTROPIC_PATCHED_DXBC}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+	COMMAND "$<TARGET_FILE:IsotropicShaderPatcher>" "${NANBUSTER_ISOTROPIC_ORIGINAL_DXBC}" "${NANBUSTER_ISOTROPIC_PATCHED_DXBC}"
+	DEPENDS IsotropicShaderPatcher "${NANBUSTER_ISOTROPIC_ORIGINAL_DXBC}"
+	COMMENT "NaNBuster: generating isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_ISOTROPIC_PATCHED_INC}"
+	COMMAND "${CMAKE_COMMAND}"
+		"-DNANBUSTER_INPUT=${NANBUSTER_ISOTROPIC_PATCHED_DXBC}"
+		"-DNANBUSTER_OUTPUT=${NANBUSTER_ISOTROPIC_PATCHED_INC}"
+		"-DNANBUSTER_SYMBOL=IsotropicSpecularAA_f4b2da50"
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	DEPENDS "${NANBUSTER_ISOTROPIC_PATCHED_DXBC}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	COMMENT "NaNBuster: embedding isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_ISOTROPIC_PATCHED_ASM}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+	COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${NANBUSTER_ISOTROPIC_PATCHED_DXBC}" /Fx "${NANBUSTER_ISOTROPIC_PATCHED_ASM}"
+	DEPENDS "${NANBUSTER_ISOTROPIC_PATCHED_DXBC}"
+	COMMENT "NaNBuster: disassembling isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+	COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${NANBUSTER_ISOTROPIC_ORIGINAL_DXBC}" /Fx "${NANBUSTER_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
+	DEPENDS "${NANBUSTER_ISOTROPIC_ORIGINAL_DXBC}"
+	COMMENT "NaNBuster: normalizing original isotropic specular ASM"
+	VERBATIM
+)
+add_custom_target(
+	NaNBuster.GeneratedIsotropicSpecularAA ALL
+	DEPENDS
+		"${NANBUSTER_ISOTROPIC_PATCHED_DXBC}"
+		"${NANBUSTER_ISOTROPIC_PATCHED_INC}"
+		"${NANBUSTER_ISOTROPIC_PATCHED_ASM}"
+		"${NANBUSTER_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
+)
+add_dependencies(NaNBuster.GeneratedShader NaNBuster.GeneratedIsotropicSpecularAA)
+
 # C9: embedded corrected payload. The adapter compiles the generated include
 # into the runtime DLL and orders the DLL build after payload generation.
 # Header contracts only for C9 itself (ruling D1): the DLL consumes
 # NaNBuster.Application at runtime through C13's NaNBuster.Hook link and the
 # C13 composition wiring.
-target_include_directories(NaNBuster PRIVATE "${NANBUSTER_SHADER_OUTPUT_DIR}" "${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}")
+target_include_directories(NaNBuster PRIVATE "${NANBUSTER_SHADER_OUTPUT_DIR}" "${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}" "${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}" "${CMAKE_SOURCE_DIR}/build/shaders")
 add_dependencies(NaNBuster NaNBuster.GeneratedShader)
 
 include(CTest)

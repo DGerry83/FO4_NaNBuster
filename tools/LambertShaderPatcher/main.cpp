@@ -1,3 +1,4 @@
+#include "Core/DxbcAnisotropicSpecularClampPatcher.h"
 #include "Core/DxbcHashWriter.h"
 #include "Core/DxbcInspector.h"
 #include "Core/DxbcLambertGuardPatcher.h"
@@ -12,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
@@ -84,9 +86,28 @@ namespace
 auto main(int argc, char* argv[]) -> int
 {
 	try {
-		if (argc != 3) {
-			std::cerr << "usage: LambertShaderPatcher <original.dxbc> <output.dxbc>\n";
+		if (argc != 3 && argc != 4) {
+			std::cerr << "usage: LambertShaderPatcher <original.dxbc> <output.dxbc> [--anisotropic-clamp|--combined-anisotropic-clamp]\n";
 			return static_cast<int>(ExitCode::Usage);
+		}
+
+		enum class PatchMode
+		{
+			LambertOnly,
+			AnisotropicClamp,
+			CombinedAnisotropicClamp,
+		};
+		PatchMode mode = PatchMode::LambertOnly;
+		if (argc == 4) {
+			const std::string_view option = argv[3];
+			if (option == "--anisotropic-clamp") {
+				mode = PatchMode::AnisotropicClamp;
+			} else if (option == "--combined-anisotropic-clamp") {
+				mode = PatchMode::CombinedAnisotropicClamp;
+			} else {
+				std::cerr << "LambertShaderPatcher: error: unknown patch mode '" << option << "'\n";
+				return static_cast<int>(ExitCode::Usage);
+			}
 		}
 
 		const std::filesystem::path inputPath = argv[1];
@@ -116,27 +137,49 @@ auto main(int argc, char* argv[]) -> int
 					" at offset " + std::to_string(inspected.error().Offset));
 		}
 
-		const NaNBuster::DxbcLambertGuardPatcher patcher;
-		auto patched = patcher.Patch(*inspected, *identity);
-		if (!patched) {
-			return Fail(
-				ExitCode::PatchFailure,
-				"guard patch failed: " + std::string(ErrorName(patched.error().Code)) +
-					" at offset " + std::to_string(patched.error().Offset));
+		if (mode != PatchMode::LambertOnly && identity != NaNBuster::LambertShaderIdentities.begin() + 1 &&
+			identity != NaNBuster::LambertShaderIdentities.begin() + 2 && identity != NaNBuster::LambertShaderIdentities.begin() + 3 &&
+			identity != NaNBuster::LambertShaderIdentities.begin() + 5 && identity != NaNBuster::LambertShaderIdentities.begin() + 7 &&
+			identity != NaNBuster::LambertShaderIdentities.begin() + 9 && identity != NaNBuster::LambertShaderIdentities.begin() + 11) {
+			return Fail(ExitCode::IdentityFailure, "anisotropic clamp modes are approved only for the seven exact anisotropic originals");
+		}
+
+		std::vector<std::byte> corrected;
+		std::size_t insertedBytes = 168;
+		if (mode == PatchMode::LambertOnly) {
+			auto patched = NaNBuster::DxbcLambertGuardPatcher{}.Patch(*inspected, *identity);
+			if (!patched) {
+				return Fail(
+					ExitCode::PatchFailure,
+					"guard patch failed: " + std::string(ErrorName(patched.error().Code)) +
+						" at offset " + std::to_string(patched.error().Offset));
+			}
+			corrected = std::move(patched->Bytes);
+		} else {
+			const bool combined = mode == PatchMode::CombinedAnisotropicClamp;
+			auto patched = NaNBuster::DxbcAnisotropicSpecularClampPatcher{}.Patch(*inspected, *identity, combined);
+			if (!patched) {
+				return Fail(
+					ExitCode::PatchFailure,
+					"anisotropic clamp patch failed: " + std::string(ErrorName(patched.error().Code)) +
+						" at offset " + std::to_string(patched.error().Offset));
+			}
+			insertedBytes = combined ? 196 : 28;
+			corrected = std::move(patched->Bytes);
 		}
 
 		const NaNBuster::DxbcHashWriter hashWriter;
-		auto finalized = hashWriter.Write(patched->Bytes);
+		auto finalized = hashWriter.Write(corrected);
 		if (!finalized) {
 			return Fail(
 				ExitCode::HashFailure,
 				"hash finalization failed: " + std::string(ErrorName(finalized.error().Code)) +
 					" at offset " + std::to_string(finalized.error().Offset));
 		}
-		if (patched->Bytes.size() != original.size() + 168) {
-			return Fail(ExitCode::OutputValidationFailure, "corrected size is not original size + 168");
+		if (corrected.size() != original.size() + insertedBytes) {
+			return Fail(ExitCode::OutputValidationFailure, "corrected size does not match the selected patch mode");
 		}
-		auto reinspected = inspector.Inspect(NaNBuster::ByteView{ patched->Bytes.data(), patched->Bytes.size() });
+		auto reinspected = inspector.Inspect(NaNBuster::ByteView{ corrected.data(), corrected.size() });
 		if (!reinspected) {
 			return Fail(ExitCode::OutputValidationFailure, "finalized container failed re-inspection");
 		}
@@ -146,7 +189,7 @@ auto main(int argc, char* argv[]) -> int
 			if (!stream.is_open()) {
 				return Fail(ExitCode::WriteFailure, "failed to open output '" + outputPath.string() + "'");
 			}
-			stream.write(reinterpret_cast<const char*>(patched->Bytes.data()), static_cast<std::streamsize>(patched->Bytes.size()));
+			stream.write(reinterpret_cast<const char*>(corrected.data()), static_cast<std::streamsize>(corrected.size()));
 			stream.flush();
 			if (!stream) {
 				return Fail(ExitCode::WriteFailure, "failed to write output '" + outputPath.string() + "'");
@@ -154,7 +197,7 @@ auto main(int argc, char* argv[]) -> int
 		}
 
 		const auto written = ReadAllBytes(outputPath);
-		if (written != patched->Bytes) {
+		if (written != corrected) {
 			return Fail(ExitCode::WriteFailure, "output read-back mismatch for '" + outputPath.string() + "'");
 		}
 

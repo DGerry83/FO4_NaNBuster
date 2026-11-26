@@ -12,6 +12,8 @@ namespace NaNBuster
 		bool PathError = false;
 		bool Color0LogClampInvalid = false;
 		bool LambertDecodeGuardInvalid = false;
+		bool AnisotropicSpecularClampInvalid = false;
+		bool IsotropicSpecularAAInvalid = false;
 	};
 
 	class IniConfigLoader final

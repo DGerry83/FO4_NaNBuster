@@ -1,8 +1,8 @@
 # NaNBuster
 
-NaNBuster is a standalone Fallout 4 F4SE plugin that prevents two independent sources of NaN pixels: a COLOR0 logarithm issue and invalid Lambert normal decoding. It substitutes corrected shader bytecode only for exact original size/hash matches and leaves all other shaders unchanged.
+NaNBuster is a standalone Fallout 4 F4SE plugin that prevents two independent sources of NaN pixels, an anisotropic-specular range failure that can produce white-square bloom artifacts, and valid-normal isotropic specular aliasing that can produce needle-like glossy-edge highlights. It substitutes corrected shader bytecode only for exact original size/hash matches and leaves all other shaders unchanged.
 
-**Current release:** [v0.2.1](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.2.1), supporting Fallout 4 OG 1.10.163. The original COLOR0 correction and eleven Lambert decoder guards have separate, default-on INI toggles.
+**Current release:** [v0.2.1](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.2.1), supporting Fallout 4 OG 1.10.163. The original COLOR0 correction and twelve Lambert decoder guards have separate, default-on INI toggles.
 
 ## Requirements
 
@@ -34,9 +34,26 @@ All four interpolated COLOR0 channels are clamped before the existing logarithm/
 
 ### Lambert decode guard
 
-Eleven shaders—ten pixel shaders and one compute shader—decode normals with `e = sample * 4 - 2`, followed by `f = dot(e,e)` and `sqrt(1 - f/4)`. Values outside the valid disc can otherwise produce NaN. The guard selects `1.999 * rsqrt(f)` only when `f > 4`, scales `e.xy`, and recomputes `f` before the original decode. Valid inputs are unchanged; invalid inputs produce a unit normal within floating-point rounding.
+Twelve shaders—ten pixel shaders and two compute shaders—decode normals with `e = sample * 4 - 2`, followed by `f = dot(e,e)` and `sqrt(1 - f/4)`. Values outside the valid disc can otherwise produce NaN. The guard selects `1.999 * rsqrt(f)` only when `f > 4`, scales `e.xy`, and recomputes `f` before the original decode. Valid inputs are unchanged; invalid inputs produce a unit normal within floating-point rounding.
 
 The plugin embeds all corrected DXBC payloads in the DLL. No runtime HLSL compilation or binary rewriting occurs. Malformed data, unexpected versions, and third-party replacement shaders pass through unchanged. Additional sibling shaders and fog-specific patches are not included.
+
+### Anisotropic specular clamp
+
+- Pixel shader resources: `5612`, `5620`, `5617`, `5650`, `5832`, and `5836`
+- Compute shader resource: `6108`, original hash `be21279d-733505d8-43f98a86-09502d65`, 6588 bytes
+
+The second anisotropic specular lobe is clamped to `[0,1]` before its exponent-125 evaluation. This prevents a non-unit sampled direction from producing extreme finite HDR energy that subsequent downsample and bloom passes spread into white squares. Values already within the valid range are unchanged. Static Lambert-only, clamp-only, and combined payloads preserve independent behavior for the Lambert and anisotropic toggles.
+
+### Isotropic specular anti-aliasing
+
+- Pixel shader hash: `f4b2da50-c279fcd9-bd60ba4f-6a804632`
+- Original DXBC size: 6528 bytes
+- Corrected DXBC size: 7072 bytes
+
+Fine screen-space normal derivatives estimate local normal variance and widen the isotropic Blinn-Phong exponent where glossy edges change rapidly. The anisotropic branch, existing 15.0 clamp, early-out, resource interface, and nine temporary registers remain unchanged. This addresses valid-normal specular aliasing rather than NaN or out-of-range input; it does not add Lambert decoder coverage.
+
+RenderDoc replay of the exact payload reduced the confirmed shader peak from 35.7996788 to 14.8921652 while allowing a dark shoulder to rise, reducing the one-pixel strip and its downstream bloom rather than globally dimming the image.
 
 ## Configuration
 
@@ -46,9 +63,11 @@ The plugin embeds all corrected DXBC payloads in the DLL. No runtime HLSL compil
 [Fixes]
 Color0LogClamp=true
 LambertDecodeGuard=true
+AnisotropicSpecularClamp=true
+IsotropicSpecularAA=true
 ```
 
-Each fix defaults to enabled. Set only the problematic fix to `false` to disable it while leaving the other fix active. `LambertDecodeGuard` controls all eleven Lambert shaders as one fix. Missing settings and invalid values default to enabled; invalid values also produce a startup warning. Changes require restarting Fallout 4. Substitution logs report the actual shader identity.
+Each fix defaults to enabled. Set only the problematic fix to `false` to disable it while leaving the other fixes active. `LambertDecodeGuard` controls all twelve Lambert shaders as one fix; `AnisotropicSpecularClamp` controls the seven exact anisotropic originals: 5612, 5620, 5617, 5650, 5832, 5836, and 6108. `IsotropicSpecularAA` controls the exact `f4b2da50...` isotropic anti-aliasing payload independently. Missing settings and invalid values default to enabled; invalid values also produce a startup warning in the NaNBuster log. Changes require restarting Fallout 4. Substitution logs report the actual shader identity.
 
 ## Community Shaders interoperability
 
@@ -102,10 +121,12 @@ See `docs/Build-and-Compile.md` for the full build, test, export, and staging gu
 - `src/Infrastructure/` — F4SE, hooking, D3D, payload, and logging adapters.
 - `tools/ShaderPatcher/` — offline COLOR0 DXBC generator.
 - `tools/LambertShaderPatcher/` — offline Lambert guard generator.
+- `tools/IsotropicShaderPatcher/` — offline isotropic specular-AA generator.
 - `tools/ShaderTriage/` — offline static shader candidate analysis.
 - `tests/` — layer-mirrored tests.
 - `references/shaders/PS49B6A21CI0O1/` — read-only original COLOR0 DXBC and disassembly.
 - `references/shaders/LambertDecode/` — read-only original Lambert DXBC/disassembly pairs.
+- `references/shaders/IsotropicSpecularAA/` — read-only original isotropic DXBC/disassembly.
 - `assets/config/NaNBuster.ini` — default-on scoped-fix configuration.
 - `dist/NaNBuster-dev/` — ignored development staging; the user-owned MO2 symlink target.
 - `dist/NaNBuster/` — ignored release staging; recreated only for explicit releases.

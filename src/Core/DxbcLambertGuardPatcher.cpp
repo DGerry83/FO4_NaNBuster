@@ -211,7 +211,7 @@ namespace NaNBuster
 			tokens.push_back(value);
 		}
 
-		auto BuildGuardTokens(ByteView stream, const DecodeAnchor& anchor, std::uint32_t originalTempCount)
+		auto BuildGuardTokens(ByteView stream, const DecodeAnchor& anchor, std::uint32_t originalTempCount, bool useMadSource)
 			-> std::vector<std::uint32_t>
 		{
 			const auto mask = TempDestination(originalTempCount);
@@ -223,7 +223,12 @@ namespace NaNBuster
 				TokenAt(stream, anchor.MadTokenOffset + 1),
 				TokenAt(stream, anchor.MadTokenOffset + 2),
 			};
+			const std::size_t eSourceOffset = useMadSource ? anchor.MadTokenOffset + 3 : anchor.Dp2TokenOffset + 3;
 			const std::pair<std::uint32_t, std::uint32_t> eSource{
+				TokenAt(stream, eSourceOffset),
+				TokenAt(stream, eSourceOffset + 1),
+			};
+			const std::pair<std::uint32_t, std::uint32_t> eDotSource{
 				TokenAt(stream, anchor.Dp2TokenOffset + 3),
 				TokenAt(stream, anchor.Dp2TokenOffset + 4),
 			};
@@ -261,8 +266,8 @@ namespace NaNBuster
 
 			tokens.push_back(0x0700000Fu);
 			AppendOperand(tokens, fDestination);
-			AppendOperand(tokens, eSource);
-			AppendOperand(tokens, eSource);
+			AppendOperand(tokens, eDotSource);
+			AppendOperand(tokens, eDotSource);
 			return tokens;
 		}
 	}
@@ -301,7 +306,8 @@ namespace NaNBuster
 		}
 
 		const ByteView stream = container.ShaderStream();
-		const auto guardTokens = BuildGuardTokens(stream, *anchor, temps->Count);
+		const bool useMadSource = identity.Identity.ShaderUid == LambertShaderIdentities[11].Identity.ShaderUid;
+		const auto guardTokens = BuildGuardTokens(stream, *anchor, temps->Count, useMadSource);
 		if (guardTokens.size() != kInsertedTokenCount ||
 			original.size() > std::numeric_limits<std::uint32_t>::max() - kInsertedByteCount) {
 			return std::unexpected(DxbcError{ DxbcErrorCode::InternalError, anchor->InsertionTokenOffset });

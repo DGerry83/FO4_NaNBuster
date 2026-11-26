@@ -44,64 +44,127 @@ auto main() -> int
 		const auto result = NaNBuster::IniConfigLoader::Load(root / "missing.ini");
 		CHECK(result.Policy.Color0LogClampEnabled);
 		CHECK(result.Policy.LambertDecodeGuardEnabled);
+		CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+		CHECK(result.Policy.IsotropicSpecularAAEnabled);
 		CHECK(!result.PathError);
 		CHECK(!result.Color0LogClampInvalid);
 		CHECK(!result.LambertDecodeGuardInvalid);
+		CHECK(!result.AnisotropicSpecularClampInvalid);
+		CHECK(!result.IsotropicSpecularAAInvalid);
 	}
 	{
 		const auto result = NaNBuster::IniConfigLoader::Load({});
 		CHECK(result.PathError);
 		CHECK(result.Policy.Color0LogClampEnabled);
 		CHECK(result.Policy.LambertDecodeGuardEnabled);
+		CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+		CHECK(result.Policy.IsotropicSpecularAAEnabled);
 	}
 
 	WriteFile(path, "");
 	auto result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 
 	WriteFile(path, "[Fixes]\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 
-	WriteFile(path, "[Fixes]\nColor0LogClamp=false\nLambertDecodeGuard=false\n");
+	WriteFile(path, "[Fixes]\nColor0LogClamp=false\nLambertDecodeGuard=false\nAnisotropicSpecularClamp=false\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(!result.Policy.Color0LogClampEnabled);
 	CHECK(!result.Policy.LambertDecodeGuardEnabled);
+	CHECK(!result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 	CHECK(!result.Color0LogClampInvalid);
 	CHECK(!result.LambertDecodeGuardInvalid);
+	CHECK(!result.AnisotropicSpecularClampInvalid);
+	CHECK(!result.IsotropicSpecularAAInvalid);
 
-	WriteFile(path, "[Fixes]\nColor0LogClamp=0\nLambertDecodeGuard=1\n");
+	WriteFile(path, "[Fixes]\nColor0LogClamp=0\nLambertDecodeGuard=1\nAnisotropicSpecularClamp=0\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(!result.Policy.Color0LogClampEnabled);
 	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(!result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 
-	WriteFile(path, "[Fixes]\nColor0LogClamp=TRUE\nLambertDecodeGuard=FaLsE\n");
+	WriteFile(path, "[Fixes]\nColor0LogClamp=TRUE\nLambertDecodeGuard=FaLsE\nAnisotropicSpecularClamp=TrUe\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(!result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 
-	WriteFile(path, "[Fixes]\nColor0LogClamp=maybe\nLambertDecodeGuard=invalid\n");
+	WriteFile(path, "[Fixes]\nColor0LogClamp=maybe\nLambertDecodeGuard=invalid\nAnisotropicSpecularClamp=unknown\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 	CHECK(result.Color0LogClampInvalid);
 	CHECK(result.LambertDecodeGuardInvalid);
+	CHECK(result.AnisotropicSpecularClampInvalid);
+	CHECK(!result.IsotropicSpecularAAInvalid);
 
-	WriteFile(path, "[Fixes]\nColor0LogClamp=\nLambertDecodeGuard=false\n");
+	WriteFile(path, "[Fixes]\nColor0LogClamp=\nLambertDecodeGuard=false\nAnisotropicSpecularClamp=\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(!result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 	CHECK(result.Color0LogClampInvalid);
 	CHECK(!result.LambertDecodeGuardInvalid);
+	CHECK(result.AnisotropicSpecularClampInvalid);
+	CHECK(!result.IsotropicSpecularAAInvalid);
 
 	WriteFile(path, "[Fixes]\nColor0LogClamp=  true  \nUnknownSetting=false\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
 	CHECK(result.Policy.Color0LogClampEnabled);
 	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
 	CHECK(!result.Color0LogClampInvalid);
 	CHECK(!result.LambertDecodeGuardInvalid);
+	CHECK(!result.AnisotropicSpecularClampInvalid);
+	CHECK(!result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA=false\n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(result.Policy.Color0LogClampEnabled);
+	CHECK(result.Policy.LambertDecodeGuardEnabled);
+	CHECK(result.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(!result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(!result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA=0\n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(!result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(!result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA=FaLsE\n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(!result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(!result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA= TRUE \n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(!result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA=unknown\n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(result.IsotropicSpecularAAInvalid);
+
+	WriteFile(path, "[Fixes]\nIsotropicSpecularAA=\n");
+	result = NaNBuster::IniConfigLoader::Load(path);
+	CHECK(result.Policy.IsotropicSpecularAAEnabled);
+	CHECK(result.IsotropicSpecularAAInvalid);
 
 	WriteFile(path, "[Fixes]\nColor0LogClamp=" + std::string(128, 'x') + "\n");
 	result = NaNBuster::IniConfigLoader::Load(path);
@@ -115,8 +178,12 @@ auto main() -> int
 	const auto packaged = NaNBuster::IniConfigLoader::Load(NANBUSTER_DEFAULT_INI_PATH);
 	CHECK(packaged.Policy.Color0LogClampEnabled);
 	CHECK(packaged.Policy.LambertDecodeGuardEnabled);
+	CHECK(packaged.Policy.AnisotropicSpecularClampEnabled);
+	CHECK(packaged.Policy.IsotropicSpecularAAEnabled);
 	CHECK(!packaged.Color0LogClampInvalid);
 	CHECK(!packaged.LambertDecodeGuardInvalid);
+	CHECK(!packaged.AnisotropicSpecularClampInvalid);
+	CHECK(!packaged.IsotropicSpecularAAInvalid);
 
 	std::filesystem::remove_all(root);
 	if (g_failures != 0) {

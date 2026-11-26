@@ -156,3 +156,45 @@ target_compile_definitions(
 )
 
 add_test(NAME Core.DxbcLambertGuardPatcher COMMAND Core.DxbcLambertGuardPatcher.Tests)
+
+
+add_executable(Core.DxbcAnisotropicSpecularClampPatcher.Tests DxbcAnisotropicSpecularClampPatcherTests.cpp)
+
+target_link_libraries(Core.DxbcAnisotropicSpecularClampPatcher.Tests PRIVATE NaNBuster.Core)
+
+target_include_directories(
+	Core.DxbcAnisotropicSpecularClampPatcher.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+)
+
+target_compile_definitions(
+	Core.DxbcAnisotropicSpecularClampPatcher.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_LAMBERT_REFERENCE_ROOT="${CMAKE_SOURCE_DIR}/references/shaders/LambertDecode"
+)
+
+add_test(NAME Core.DxbcAnisotropicSpecularClampPatcher COMMAND Core.DxbcAnisotropicSpecularClampPatcher.Tests)
+
+
+add_executable(Core.DxbcIsotropicSpecularAAPatcher.Tests DxbcIsotropicSpecularAAPatcherTests.cpp)
+
+target_link_libraries(Core.DxbcIsotropicSpecularAAPatcher.Tests PRIVATE NaNBuster.Core)
+
+target_include_directories(
+	Core.DxbcIsotropicSpecularAAPatcher.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+)
+
+target_compile_definitions(
+	Core.DxbcIsotropicSpecularAAPatcher.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_ISOTROPIC_ORIGINAL_PATH="${CMAKE_SOURCE_DIR}/references/shaders/IsotropicSpecularAA/f4b2da50-c279fcd9-bd60ba4f-6a804632/original.dxbc"
+)
+
+add_test(NAME Core.DxbcIsotropicSpecularAAPatcher COMMAND Core.DxbcIsotropicSpecularAAPatcher.Tests)

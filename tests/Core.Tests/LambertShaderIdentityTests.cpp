@@ -30,9 +30,10 @@ namespace
 
 auto main() -> int
 {
-	static_assert(NaNBuster::LambertShaderIdentities.size() == 11);
+	static_assert(NaNBuster::LambertShaderIdentities.size() == 12);
 	static_assert(NaNBuster::LambertShaderIdentities[0].Stage == NaNBuster::LambertShaderStage::Pixel);
 	static_assert(NaNBuster::LambertShaderIdentities[10].Stage == NaNBuster::LambertShaderStage::Compute);
+	static_assert(NaNBuster::LambertShaderIdentities[11].Stage == NaNBuster::LambertShaderStage::Compute);
 
 	const std::filesystem::path root = NANBUSTER_LAMBERT_REFERENCE_ROOT;
 	std::size_t computeCount = 0;
@@ -73,7 +74,7 @@ auto main() -> int
 		flipped[19] ^= std::byte{ 0xFF };
 		CHECK(!NaNBuster::ShaderIdentityMatcher::Matches(NaNBuster::TestFixtures::AsByteView(flipped), identity));
 	}
-	CHECK(computeCount == 1);
+	CHECK(computeCount == 2);
 
 	const auto invalidHash = NaNBuster::LambertIdentityDetail::EmbeddedHashFromText("invalid");
 	CHECK((invalidHash == std::array<std::byte, 16>{}));
@@ -83,6 +84,6 @@ auto main() -> int
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "Core.LambertShaderIdentity: all checks passed (11 source identities, 10 pixel, 1 compute).\n";
+	std::cout << "Core.LambertShaderIdentity: all checks passed (12 source identities, 10 pixel, 2 compute).\n";
 	return EXIT_SUCCESS;
 }

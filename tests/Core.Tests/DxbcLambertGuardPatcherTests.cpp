@@ -141,7 +141,7 @@ namespace
 		return result;
 	}
 
-	std::vector<std::uint32_t> ExpectedGuard(const DxbcContainerView& container, std::size_t decodeIndex, std::uint32_t tempCount)
+	std::vector<std::uint32_t> ExpectedGuard(const DxbcContainerView& container, std::size_t decodeIndex, std::uint32_t tempCount, bool useMadSource)
 	{
 		const auto instructions = container.Instructions();
 		const auto& mad = instructions[decodeIndex];
@@ -162,8 +162,11 @@ namespace
 		const std::uint32_t scale = tempCount + 1;
 		const std::uint32_t eDestToken = token(mad.TokenOffset + 1);
 		const std::uint32_t eDestRegister = token(mad.TokenOffset + 2);
-		const std::uint32_t eToken = token(dp2.TokenOffset + 3);
-		const std::uint32_t eRegister = token(dp2.TokenOffset + 4);
+		const std::size_t eSourceOffset = useMadSource ? mad.TokenOffset + 3 : dp2.TokenOffset + 3;
+		const std::uint32_t eToken = token(eSourceOffset);
+		const std::uint32_t eRegister = token(eSourceOffset + 1);
+		const std::uint32_t eDotToken = token(dp2.TokenOffset + 3);
+		const std::uint32_t eDotRegister = token(dp2.TokenOffset + 4);
 		const std::uint32_t fDestToken = token(dp2.TokenOffset + 1);
 
 		std::vector<std::uint32_t> expected{
@@ -172,7 +175,7 @@ namespace
 			0x07000038u, 0x00100012u, scale, 0x00100006u, scale, 0x00004001u, 0x3FFFDF3Bu,
 			0x09000037u, 0x00100012u, scale, 0x00100006u, mask, 0x00100006u, scale, 0x00004001u, 0x3F800000u,
 			0x07000038u, eDestToken, eDestRegister, eToken, eRegister, 0x00100006u, scale,
-			0x0700000Fu, fDestToken, fRegister, eToken, eRegister, eToken, eRegister,
+			0x0700000Fu, fDestToken, fRegister, eDotToken, eDotRegister, eDotToken, eDotRegister,
 		};
 		return expected;
 	}
@@ -249,7 +252,8 @@ namespace
 			CHECK(Temps(*correctedContainer).second == tempCount + 2);
 			CHECK(HasGuard(*correctedContainer));
 
-			const auto expected = ExpectedGuard(*container, decodeIndex, tempCount);
+			const bool useMadSource = identity.Identity.ShaderUid == NaNBuster::LambertShaderIdentities[11].Identity.ShaderUid;
+			const auto expected = ExpectedGuard(*container, decodeIndex, tempCount, useMadSource);
 			CHECK(expected.size() == 42);
 			Bytes expectedBytes;
 			for (const auto token : expected) {
@@ -393,6 +397,6 @@ auto main() -> int
 		std::cerr << "Core.DxbcLambertGuardPatcher: " << g_failures << " check(s) failed.\n";
 		return EXIT_FAILURE;
 	}
-	std::cout << "Core.DxbcLambertGuardPatcher: all checks passed (10 real shaders, rejection matrix, math vectors).\n";
+	std::cout << "Core.DxbcLambertGuardPatcher: all checks passed (12 real shaders, rejection matrix, math vectors).\n";
 	return EXIT_SUCCESS;
 }
