@@ -161,6 +161,31 @@ add_dependencies(Infrastructure.IsotropicSpecularAAValidation.Tests NaNBuster.Ge
 add_test(NAME Infrastructure.IsotropicSpecularAAValidation COMMAND Infrastructure.IsotropicSpecularAAValidation.Tests)
 
 
+add_executable(Infrastructure.AEShaderVariantValidation.Tests AEShaderVariantValidationTests.cpp)
+
+target_link_libraries(Infrastructure.AEShaderVariantValidation.Tests PRIVATE NaNBuster.Core d3d11)
+
+target_include_directories(
+	Infrastructure.AEShaderVariantValidation.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+		"${CMAKE_SOURCE_DIR}/build/shaders"
+)
+
+target_compile_definitions(
+	Infrastructure.AEShaderVariantValidation.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_AE_REFERENCE_ROOT="${NANBUSTER_AE_REFERENCE_ROOT}"
+		NANBUSTER_AE_SHADER_OUTPUT_ROOT="${NANBUSTER_AE_SHADER_OUTPUT_ROOT}"
+)
+
+add_dependencies(Infrastructure.AEShaderVariantValidation.Tests NaNBuster.GeneratedAEShaderVariants)
+
+add_test(NAME Infrastructure.AEShaderVariantValidation COMMAND Infrastructure.AEShaderVariantValidation.Tests)
+
+
 add_executable(Infrastructure.EmbeddedShaderPatchRegistry.Tests
 	EmbeddedShaderPatchRegistryTests.cpp
 	"${CMAKE_SOURCE_DIR}/src/Infrastructure/EmbeddedShaderPatchRegistry.cpp"
@@ -185,6 +210,7 @@ target_compile_definitions(
 		NANBUSTER_CORRECTED_SHADER_PATH="${NANBUSTER_PATCHED_DXBC}"
 		NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT="${NANBUSTER_LAMBERT_SHADER_OUTPUT_ROOT}"
 		NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR="${NANBUSTER_ISOTROPIC_SHADER_OUTPUT_DIR}"
+		NANBUSTER_AE_SHADER_OUTPUT_ROOT="${NANBUSTER_AE_SHADER_OUTPUT_ROOT}"
 )
 
 add_dependencies(Infrastructure.EmbeddedShaderPatchRegistry.Tests NaNBuster.GeneratedShader)
@@ -244,3 +270,29 @@ target_compile_definitions(
 add_dependencies(Infrastructure.ComputeShaderCreationHook.Tests NaNBuster.GeneratedShader)
 
 add_test(NAME Infrastructure.ComputeShaderCreationHook COMMAND Infrastructure.ComputeShaderCreationHook.Tests)
+
+add_executable(Infrastructure.NativeHookDefinition.Tests NativeHookDefinitionTests.cpp)
+
+target_link_libraries(Infrastructure.NativeHookDefinition.Tests PRIVATE NaNBuster.Hook CommonLibF4::CommonLibF4)
+
+target_include_directories(
+	Infrastructure.NativeHookDefinition.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+)
+
+add_test(NAME Infrastructure.NativeHookDefinition COMMAND Infrastructure.NativeHookDefinition.Tests)
+
+add_executable(Infrastructure.NativeHookInstaller.Tests NativeHookInstallerTests.cpp)
+
+target_link_libraries(Infrastructure.NativeHookInstaller.Tests PRIVATE NaNBuster.Hook)
+
+target_include_directories(
+	Infrastructure.NativeHookInstaller.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+)
+
+add_test(NAME Infrastructure.NativeHookInstaller COMMAND Infrastructure.NativeHookInstaller.Tests)

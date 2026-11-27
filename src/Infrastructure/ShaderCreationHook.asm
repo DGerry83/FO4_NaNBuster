@@ -1,14 +1,12 @@
 ; -----------------------------------------------------------------------------
-; NaNBuster - OG shader-creation hook: native entry + original-call replay.
-; Evidence: G5_HOOK_CONTRACT.md §4 (site/fingerprint), §5 (ABI), §6.3 (context),
-; §7 (trampoline/exactly-once); C12 contract (parent rulings D1-D3).
+; NaNBuster - OG/AE shader-creation hook: native entry + original-call replay.
+; Evidence: OG G5_HOOK_CONTRACT.md §4-§7 and AE_HOOK_CONTRACT.md §4-§7.
 ;
-; Site:        0x141d10e82 (RVA 0x1D10E82), owner CreatePixelShaderFromStream
-;              (Address-Library ID 957517), function offset 0x142.
-; Fingerprint: 34 accepted bytes verified by Install() before any engine write.
-; Detour:      7 bytes (E9 rel32 + 2 NOP) written by Install(); execution
-;              resumes at the verified post-call VA 0x141d10ea4 (site + 34).
-; Device:      ID3D11Device* global, Address-Library ID 1454788.
+; OG site:    0x141d10e82, owner ID 957517, offset 0x142, 34-byte fingerprint.
+; AE site:    0x14181defe, owner ID 2276951, offset 0x12e, 30-byte fingerprint.
+; Detour:     7 bytes (E9 rel32 + 2 NOP) at either active-runtime site.
+; Resume:     OG 0x141d10ea4 / AE 0x14181df1c (site + fingerprint size).
+; Device:     ID3D11Device* global, OG ID 1454788 / AE ID 2704430.
 ;
 ; HookCreationContext layout (duplicated as C++ static_asserts in
 ; ShaderCreationHook.h; both sides must agree):

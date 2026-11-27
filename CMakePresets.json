@@ -21,11 +21,27 @@
 			},
 			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
 			"cacheVariables": {
+				"COMMONLIB_RUNTIME_VR": "OFF",
+				"COMMONLIB_RUNTIME_OG": "ON",
+				"COMMONLIB_RUNTIME_NG": "OFF",
+				"COMMONLIB_RUNTIME_AE": "OFF",
 				"CMAKE_SYSTEM_NAME": "Windows",
 				"CMAKE_SYSTEM_VERSION": "10.0.19045.0",
 				"VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
 				"VCPKG_HOST_TRIPLET": "x64-windows-static-md",
 				"CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+			}
+		},
+		{
+			"name": "dual-msvc",
+			"displayName": "Fallout 4 OG + AE - MSVC x64",
+			"inherits": "og-msvc",
+			"binaryDir": "${sourceDir}/build/dual-msvc",
+			"cacheVariables": {
+				"COMMONLIB_RUNTIME_VR": "OFF",
+				"COMMONLIB_RUNTIME_OG": "ON",
+				"COMMONLIB_RUNTIME_NG": "OFF",
+				"COMMONLIB_RUNTIME_AE": "ON"
 			}
 		}
 	],
@@ -39,12 +55,30 @@
 			"name": "og-msvc-release",
 			"configurePreset": "og-msvc",
 			"configuration": "RelWithDebInfo"
+		},
+		{
+			"name": "dual-msvc-debug",
+			"configurePreset": "dual-msvc",
+			"configuration": "Debug"
+		},
+		{
+			"name": "dual-msvc-release",
+			"configurePreset": "dual-msvc",
+			"configuration": "RelWithDebInfo"
 		}
 	],
 	"testPresets": [
 		{
 			"name": "og-msvc-release",
 			"configurePreset": "og-msvc",
+			"configuration": "RelWithDebInfo",
+			"output": {
+				"outputOnFailure": true
+			}
+		},
+		{
+			"name": "dual-msvc-release",
+			"configurePreset": "dual-msvc",
 			"configuration": "RelWithDebInfo",
 			"output": {
 				"outputOnFailure": true

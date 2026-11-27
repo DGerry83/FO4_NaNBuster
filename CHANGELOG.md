@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0.0
+
+- Added one dual-runtime DLL for Fallout 4 OG 1.10.163 and AE 1.11.240, with exact-fingerprint pixel and compute hooks for each runtime.
+- Added 13 exact AE shader identities and 27 offline-generated payloads through 27 appended registry entries, bringing the registry to 55 entries while preserving every OG identity and payload.
+- Verified all 27 originals under all 16 INI policy combinations, deterministic payload generation, exact ASM/structural deltas, D3D11 creation, and all four OG/dual Debug/RelWithDebInfo build configurations with 26/26 tests in each.
+- Verified on Nvidia AE: both hooks, all 13 substitutions, independent toggle behavior, ordinary rendering, and save/load with clean logs. AMD AE user confirmation remains pending; any dual release remains prerelease until that evidence exists and its removal is explicitly approved.
+
 ## 0.2.5.0
 
 - Added exact-target isotropic specular anti-aliasing for original `f4b2da50-c279fcd9-bd60ba4f-6a804632`, widening the isotropic exponent from fine normal variance to reduce one-pixel glossy-edge strips and downstream bloom.

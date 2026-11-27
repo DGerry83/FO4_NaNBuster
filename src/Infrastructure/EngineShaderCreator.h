@@ -7,8 +7,8 @@
 
 namespace NaNBuster
 {
-	// C10 G5_HOOK_CONTRACT.md §6.3 layout, captured by the hook entry at
-	// 0x141d10e82. Private Infrastructure type; valid only for the duration of
+	// C10 G5_HOOK_CONTRACT.md §6.3 / AE_HOOK_CONTRACT.md §6 layout. Private
+	// Infrastructure type; valid only for the duration of
 	// IEngineShaderCreator::Create. Application never dereferences it; C11/C12
 	// use it only to replay the exact original device call. Engine-owned
 	// wrapper, device, stream, and pool buffer stay engine-owned in all paths.

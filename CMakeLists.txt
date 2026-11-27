@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.3.0)
 
 set(COMMONLIB_PLUGIN_NAME "NaNBuster")
 set(COMMONLIB_PLUGIN_AUTHOR "DGerry83")
-set(COMMONLIB_PLUGIN_VERSION "0.2.5.0")
+set(COMMONLIB_PLUGIN_VERSION "0.3.0.0")
 set(COMMONLIB_PLUGIN_LICENSE "MIT")
 set(COMMONLIB_PLUGIN_DESCRIPTION "Fallout 4 shader artifact fixes")
 
@@ -23,10 +23,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(COMMONLIB_RUNTIME_VR OFF)
-set(COMMONLIB_RUNTIME_OG ON)
-set(COMMONLIB_RUNTIME_NG OFF)
-set(COMMONLIB_RUNTIME_AE OFF)
+set(COMMONLIB_RUNTIME_VR OFF CACHE BOOL "Enable VR runtime support")
+set(COMMONLIB_RUNTIME_OG ON CACHE BOOL "Enable OG runtime support")
+set(COMMONLIB_RUNTIME_NG OFF CACHE BOOL "Enable NG runtime support")
+set(COMMONLIB_RUNTIME_AE OFF CACHE BOOL "Enable AE runtime support")
 set(COMMONLIB_OPTION_FMT ON)
 set(COMMONLIB_OPTION_XBYAK OFF)
 set(COMMONLIB_OPTION_INI OFF)
@@ -36,6 +36,15 @@ set(COMMONLIB_OPTION_JSON OFF)
 set(COMMONLIB_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/CommonLibF4")
 include("${COMMONLIB_ROOT_DIR}/cmake/GenerateXsePluginInfo.cmake")
 generate_xse_plugin_info("${COMMONLIB_ROOT_DIR}")
+if(COMMONLIB_RUNTIME_AE)
+	# The pinned template emits a leading comma in its version array when NG is disabled.
+	set(XSE_PLUGIN_INFO_CPP_TARGET "${CMAKE_CURRENT_BINARY_DIR}/include/DualXsePluginInfo.cpp")
+	configure_file(
+		"${CMAKE_CURRENT_SOURCE_DIR}/cmake/DualXsePluginInfo.cpp.in"
+		"${XSE_PLUGIN_INFO_CPP_TARGET}"
+		@ONLY
+	)
+endif()
 
 if(NOT TARGET CommonLibF4)
 	add_subdirectory("${COMMONLIB_ROOT_DIR}" CommonLibF4 EXCLUDE_FROM_ALL)
@@ -127,7 +136,7 @@ target_include_directories(NaNBuster.Application PUBLIC "${CMAKE_CURRENT_SOURCE_
 
 target_compile_features(NaNBuster.Application PUBLIC cxx_std_23)
 
-# C12: OG shader-creation hook component (G5_HOOK_CONTRACT.md site/fingerprint).
+# C12: OG/AE shader-creation hook component (verified static contracts).
 # Static library consumed by the C12 tests and linked into the runtime DLL by
 # C13; C13 owns composition and installation. Uses CommonLib AV relocation,
 # safe-write, and the F4SE near-branch trampoline pool; XBYAK stays off.
@@ -141,6 +150,8 @@ add_library(NaNBuster.Hook.Native STATIC
 
 add_library(NaNBuster.Hook STATIC
 	src/Infrastructure/ComputeShaderCreationHook.cpp
+	src/Infrastructure/NativeHookDefinition.cpp
+	src/Infrastructure/NativeHookInstaller.cpp
 	src/Infrastructure/ShaderCreationHook.cpp
 )
 
@@ -416,6 +427,199 @@ add_custom_target(
 		"${NANBUSTER_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
 )
 add_dependencies(NaNBuster.GeneratedShader NaNBuster.GeneratedIsotropicSpecularAA)
+
+set(NANBUSTER_AE_SHADER_OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build/shaders/AEShaderVariants")
+set(NANBUSTER_AE_REFERENCE_ROOT "${CMAKE_SOURCE_DIR}/references/shaders/AEShaderVariants")
+set(NANBUSTER_AE_SHADER_STEMS
+	"bcc0320d-dee924ba-4d26b206-84d74f3f"
+	"8904fc0f-cb497158-117bc46d-4e1cf466"
+	"4dc83306-024b9074-9c24d67a-fcdee952"
+	"325742ce-45bf17d0-f4879324-3637b6aa"
+	"def41f6e-9dbcf63b-4c43cf22-4eea0bb4"
+	"600e22f5-e1a79678-b183a8f0-99de971d"
+	"d75dfae6-af7b9aa5-1a0374d8-3d186619"
+	"6b7aa1fd-0175af05-1bf184b7-22dd8846"
+	"4bfc847c-48cbb854-83d96138-488b9bb1"
+	"262c37a4-f4966781-271cf8ba-64c06ec1"
+	"e73d9a26-0c9afe98-f628f975-0e5f8aef"
+	"be21279d-733505d8-43f98a86-09502d65"
+)
+set(NANBUSTER_AE_ANISOTROPIC_STEMS
+	"8904fc0f-cb497158-117bc46d-4e1cf466"
+	"4dc83306-024b9074-9c24d67a-fcdee952"
+	"325742ce-45bf17d0-f4879324-3637b6aa"
+	"600e22f5-e1a79678-b183a8f0-99de971d"
+	"6b7aa1fd-0175af05-1bf184b7-22dd8846"
+	"262c37a4-f4966781-271cf8ba-64c06ec1"
+	"be21279d-733505d8-43f98a86-09502d65"
+)
+set(NANBUSTER_AE_GENERATED_OUTPUTS)
+foreach(hash IN LISTS NANBUSTER_AE_SHADER_STEMS)
+	set(outputDir "${NANBUSTER_AE_SHADER_OUTPUT_ROOT}/${hash}")
+	set(originalDxbc "${NANBUSTER_AE_REFERENCE_ROOT}/${hash}/original.dxbc")
+	set(patchedDxbc "${outputDir}/patched.dxbc")
+	set(patchedInc "${outputDir}/patched.inc")
+	set(patchedAsm "${outputDir}/patched.asm")
+	set(originalNormalizedAsm "${outputDir}/original-normalized.asm")
+	string(SUBSTRING "${hash}" 0 8 symbolSuffix)
+
+	add_custom_command(
+		OUTPUT "${patchedDxbc}"
+		COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+		COMMAND "$<TARGET_FILE:LambertShaderPatcher>" "${originalDxbc}" "${patchedDxbc}" --variant-of "${hash}"
+		DEPENDS LambertShaderPatcher "${originalDxbc}"
+		COMMENT "NaNBuster: generating guarded AE Lambert DXBC ${symbolSuffix}"
+		VERBATIM
+	)
+	add_custom_command(
+		OUTPUT "${patchedInc}"
+		COMMAND "${CMAKE_COMMAND}"
+			"-DNANBUSTER_INPUT=${patchedDxbc}"
+			"-DNANBUSTER_OUTPUT=${patchedInc}"
+			"-DNANBUSTER_SYMBOL=AE_Lambert_${symbolSuffix}"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+		DEPENDS "${patchedDxbc}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+		COMMENT "NaNBuster: embedding guarded AE Lambert DXBC ${symbolSuffix}"
+		VERBATIM
+	)
+	add_custom_command(
+		OUTPUT "${patchedAsm}"
+		COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+		COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${patchedDxbc}" /Fx "${patchedAsm}"
+		DEPENDS "${patchedDxbc}"
+		COMMENT "NaNBuster: disassembling guarded AE Lambert DXBC ${symbolSuffix}"
+		VERBATIM
+	)
+	add_custom_command(
+		OUTPUT "${originalNormalizedAsm}"
+		COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+		COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${originalDxbc}" /Fx "${originalNormalizedAsm}"
+		DEPENDS "${originalDxbc}"
+		COMMENT "NaNBuster: normalizing original AE Lambert ASM ${symbolSuffix}"
+		VERBATIM
+	)
+	list(APPEND NANBUSTER_AE_GENERATED_OUTPUTS
+		"${patchedDxbc}" "${patchedInc}" "${patchedAsm}" "${originalNormalizedAsm}")
+
+	if(hash IN_LIST NANBUSTER_AE_ANISOTROPIC_STEMS)
+		set(anisotropicDxbc "${outputDir}/anisotropic-clamped.dxbc")
+		set(anisotropicInc "${outputDir}/anisotropic-clamped.inc")
+		set(anisotropicAsm "${outputDir}/anisotropic-clamped.asm")
+		set(combinedDxbc "${outputDir}/combined.dxbc")
+		set(combinedInc "${outputDir}/combined.inc")
+		set(combinedAsm "${outputDir}/combined.asm")
+
+		add_custom_command(
+			OUTPUT "${anisotropicDxbc}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "$<TARGET_FILE:LambertShaderPatcher>" "${originalDxbc}" "${anisotropicDxbc}" --variant-of "${hash}" --anisotropic-clamp
+			DEPENDS LambertShaderPatcher "${originalDxbc}"
+			COMMENT "NaNBuster: generating AE anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${anisotropicInc}"
+			COMMAND "${CMAKE_COMMAND}"
+				"-DNANBUSTER_INPUT=${anisotropicDxbc}"
+				"-DNANBUSTER_OUTPUT=${anisotropicInc}"
+				"-DNANBUSTER_SYMBOL=AE_Anisotropic_${symbolSuffix}"
+				-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			DEPENDS "${anisotropicDxbc}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			COMMENT "NaNBuster: embedding AE anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${anisotropicAsm}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${anisotropicDxbc}" /Fx "${anisotropicAsm}"
+			DEPENDS "${anisotropicDxbc}"
+			COMMENT "NaNBuster: disassembling AE anisotropic-clamped DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedDxbc}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "$<TARGET_FILE:LambertShaderPatcher>" "${originalDxbc}" "${combinedDxbc}" --variant-of "${hash}" --combined-anisotropic-clamp
+			DEPENDS LambertShaderPatcher "${originalDxbc}"
+			COMMENT "NaNBuster: generating combined guarded AE DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedInc}"
+			COMMAND "${CMAKE_COMMAND}"
+				"-DNANBUSTER_INPUT=${combinedDxbc}"
+				"-DNANBUSTER_OUTPUT=${combinedInc}"
+				"-DNANBUSTER_SYMBOL=AE_Combined_${symbolSuffix}"
+				-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			DEPENDS "${combinedDxbc}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+			COMMENT "NaNBuster: embedding combined guarded AE DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		add_custom_command(
+			OUTPUT "${combinedAsm}"
+			COMMAND "${CMAKE_COMMAND}" -E make_directory "${outputDir}"
+			COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${combinedDxbc}" /Fx "${combinedAsm}"
+			DEPENDS "${combinedDxbc}"
+			COMMENT "NaNBuster: disassembling combined guarded AE DXBC ${symbolSuffix}"
+			VERBATIM
+		)
+		list(APPEND NANBUSTER_AE_GENERATED_OUTPUTS
+			"${anisotropicDxbc}" "${anisotropicInc}" "${anisotropicAsm}"
+			"${combinedDxbc}" "${combinedInc}" "${combinedAsm}")
+	endif()
+endforeach()
+
+set(NANBUSTER_AE_ISOTROPIC_STEM "f4b2da50-c279fcd9-bd60ba4f-6a804632")
+set(NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR "${NANBUSTER_AE_SHADER_OUTPUT_ROOT}/${NANBUSTER_AE_ISOTROPIC_STEM}")
+set(NANBUSTER_AE_ISOTROPIC_ORIGINAL_DXBC "${NANBUSTER_AE_REFERENCE_ROOT}/${NANBUSTER_AE_ISOTROPIC_STEM}/original.dxbc")
+set(NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}/patched.dxbc")
+set(NANBUSTER_AE_ISOTROPIC_PATCHED_INC "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}/patched.inc")
+set(NANBUSTER_AE_ISOTROPIC_PATCHED_ASM "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}/patched.asm")
+set(NANBUSTER_AE_ISOTROPIC_ORIGINAL_NORMALIZED_ASM "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}/original-normalized.asm")
+
+add_custom_command(
+	OUTPUT "${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}"
+	COMMAND "$<TARGET_FILE:IsotropicShaderPatcher>" "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_DXBC}" "${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}" --variant-of "${NANBUSTER_AE_ISOTROPIC_STEM}"
+	DEPENDS IsotropicShaderPatcher "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_DXBC}"
+	COMMENT "NaNBuster: generating AE isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_AE_ISOTROPIC_PATCHED_INC}"
+	COMMAND "${CMAKE_COMMAND}"
+		"-DNANBUSTER_INPUT=${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}"
+		"-DNANBUSTER_OUTPUT=${NANBUSTER_AE_ISOTROPIC_PATCHED_INC}"
+		"-DNANBUSTER_SYMBOL=AE_IsotropicSpecularAA_f4b2da50"
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	DEPENDS "${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedShader.cmake"
+	COMMENT "NaNBuster: embedding AE isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_AE_ISOTROPIC_PATCHED_ASM}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}"
+	COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}" /Fx "${NANBUSTER_AE_ISOTROPIC_PATCHED_ASM}"
+	DEPENDS "${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}"
+	COMMENT "NaNBuster: disassembling AE isotropic specular-AA DXBC"
+	VERBATIM
+)
+add_custom_command(
+	OUTPUT "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
+	COMMAND "${CMAKE_COMMAND}" -E make_directory "${NANBUSTER_AE_ISOTROPIC_OUTPUT_DIR}"
+	COMMAND "${NANBUSTER_FXC_EXE}" /dumpbin "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_DXBC}" /Fx "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}"
+	DEPENDS "${NANBUSTER_AE_ISOTROPIC_ORIGINAL_DXBC}"
+	COMMENT "NaNBuster: normalizing original AE isotropic specular ASM"
+	VERBATIM
+)
+list(APPEND NANBUSTER_AE_GENERATED_OUTPUTS
+	"${NANBUSTER_AE_ISOTROPIC_PATCHED_DXBC}"
+	"${NANBUSTER_AE_ISOTROPIC_PATCHED_INC}"
+	"${NANBUSTER_AE_ISOTROPIC_PATCHED_ASM}"
+	"${NANBUSTER_AE_ISOTROPIC_ORIGINAL_NORMALIZED_ASM}")
+
+add_custom_target(NaNBuster.GeneratedAEShaderVariants ALL DEPENDS ${NANBUSTER_AE_GENERATED_OUTPUTS})
+add_dependencies(NaNBuster.GeneratedShader NaNBuster.GeneratedAEShaderVariants)
 
 # C9: embedded corrected payload. The adapter compiles the generated include
 # into the runtime DLL and orders the DLL build after payload generation.

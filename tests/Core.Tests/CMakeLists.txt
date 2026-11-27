@@ -198,3 +198,24 @@ target_compile_definitions(
 )
 
 add_test(NAME Core.DxbcIsotropicSpecularAAPatcher COMMAND Core.DxbcIsotropicSpecularAAPatcher.Tests)
+
+
+add_executable(Core.AEShaderVariantIdentity.Tests AEShaderVariantIdentityTests.cpp)
+
+target_link_libraries(Core.AEShaderVariantIdentity.Tests PRIVATE NaNBuster.Core)
+
+target_include_directories(
+	Core.AEShaderVariantIdentity.Tests
+	PRIVATE
+		"${CMAKE_SOURCE_DIR}/src"
+		"${CMAKE_SOURCE_DIR}/tests"
+)
+
+target_compile_definitions(
+	Core.AEShaderVariantIdentity.Tests
+	PRIVATE
+		NANBUSTER_ORIGINAL_SHADER_PATH="${CMAKE_SOURCE_DIR}/references/shaders/PS49B6A21CI0O1/original.dxbc"
+		NANBUSTER_AE_REFERENCE_ROOT="${CMAKE_SOURCE_DIR}/references/shaders/AEShaderVariants"
+)
+
+add_test(NAME Core.AEShaderVariantIdentity COMMAND Core.AEShaderVariantIdentity.Tests)

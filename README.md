@@ -2,11 +2,13 @@
 
 NaNBuster is a standalone Fallout 4 F4SE plugin that prevents two independent sources of NaN pixels, an anisotropic-specular range failure that can produce white-square bloom artifacts, and valid-normal isotropic specular aliasing that can produce needle-like glossy-edge highlights. It substitutes corrected shader bytecode only for exact original size/hash matches and leaves all other shaders unchanged.
 
-**Current release:** [v0.2.5](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.2.5), supporting Fallout 4 OG 1.10.163. All four scoped fixes have independent, default-on INI toggles.
+**Current prerelease:** [v0.3.0](https://github.com/DGerry83/FO4_NaNBuster/releases/tag/v0.3.0), supporting Fallout 4 OG 1.10.163 and AE 1.11.240. All four scoped fixes have independent, default-on INI toggles.
+
+**Verification:** AE loading, both hooks, all 13 shader substitutions, independent toggles, ordinary rendering, and save/load are verified on Nvidia. AMD AE user confirmation remains pending, so this dual release remains prerelease until that evidence exists and removal of prerelease status is explicitly approved.
 
 ## Requirements
 
-- Windows x64 and Steam Fallout 4 **OG 1.10.163**. AE is not supported by this build.
+- Windows x64 and Steam Fallout 4 **OG 1.10.163** or **AE 1.11.240**, supported by the v0.3.0 dual prerelease.
 - [Fallout 4 Script Extender (F4SE)](https://f4se.silverlock.org/) matching the game.
 - [Address Library for F4SE Plugins](https://www.nexusmods.com/fallout4/mods/47327), installed separately. NaNBuster does not package its bin files.
 
@@ -75,7 +77,7 @@ Community Shaders was consulted during investigation to compare its Effect shade
 
 Community Shaders remains relevant because it can replace the same Effect shader family and is therefore a likely candidate for overlapping behavior or problem reports. NaNBuster does not patch unfamiliar replacement bytecode or force precedence over it.
 
-**Interoperation with Community Shaders is untested, and that testing is pending.** No compatibility or incompatibility is currently claimed.
+**Interoperation with Community Shaders:** basic OG 1.10.163 coexistence was tested on 2026-11-26 with the dual-runtime development candidate. The user observed normal shader behavior and no visual issues, and the NaNBuster log confirmed all four fixes, both hooks, expected substitutions, and no errors. Community Shaders version coverage is not exhaustive, and no separate Community Shaders log is required. NaNBuster does not patch unfamiliar replacement bytecode or force precedence over it.
 
 ## Investigation and development resources
 
@@ -127,6 +129,8 @@ See `docs/Build-and-Compile.md` for the full build, test, export, and staging gu
 - `references/shaders/PS49B6A21CI0O1/` — read-only original COLOR0 DXBC and disassembly.
 - `references/shaders/LambertDecode/` — read-only original Lambert DXBC/disassembly pairs.
 - `references/shaders/IsotropicSpecularAA/` — read-only original isotropic DXBC/disassembly.
+- `references/shaders/AEShaderVariants/` — read-only original AE variant DXBC inputs.
+- `build/shaders/AEShaderVariants/` — generated corrected AE DXBC, disassembly, and embedded include data.
 - `assets/config/NaNBuster.ini` — default-on scoped-fix configuration.
 - `dist/NaNBuster-dev/` — ignored development staging; the user-owned MO2 symlink target.
 - `dist/NaNBuster/` — ignored release staging; recreated only for explicit releases.
